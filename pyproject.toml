@@ -9,8 +9,8 @@ requires-python = ">=3.11"
 # always points at one stage. See docs/ARCHITECTURE.md.
 dependencies = [
     "pyyaml>=6.0",          # stage 0 - config
-    "requests>=2.31",       # stage 1 - streaming the catalog
     "numpy>=1.26",          # stage 2 - vector search is a matmul
+    # stage 1 streams the catalog over stdlib urllib -- no requests needed
 ]
 
 [project.optional-dependencies]

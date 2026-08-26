@@ -54,9 +54,49 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _cmd_db(args) -> int:
+    from voice_order.db import session
+
+    if args.action == "init":
+        path = session.init_schema()
+        print(f"schema applied to {path}")
+        return 0
+
+    health = session.healthcheck()
+    print(f"database  {health['database']}")
+    print(f"          {'present' if health['exists'] else 'MISSING'}"
+          f"  |  {health['size_mb']} MB")
+    print()
+    print("tables")
+    for table, count in health["tables"].items():
+        shown = "not created" if count is None else f"{count:,}"
+        print(f"  {table:<24}{shown:>14}")
+    print()
+    print("indexes (derived -- rebuild with `voice-order index all`)")
+    for name, present in health["indexes"].items():
+        print(f"  {name:<24}{'present' if present else 'missing':>14}")
+    return 0
+
+
+def _cmd_catalog(args) -> int:
+    from voice_order.catalog import load
+
+    stats = load.build_catalog(force=args.force)
+    load.report(stats)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    raise NotImplementedError(f"{args.command}: not built yet, see docs/ARCHITECTURE.md")
+
+    if args.command == "db":
+        return _cmd_db(args)
+    if args.command == "catalog":
+        return _cmd_catalog(args)
+
+    raise NotImplementedError(
+        f"{args.command}: not built yet -- see docs/ARCHITECTURE.md for the stage it belongs to"
+    )
 
 
 if __name__ == "__main__":
