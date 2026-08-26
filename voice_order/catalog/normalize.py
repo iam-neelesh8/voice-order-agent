@@ -73,6 +73,12 @@ _NIN1_RE = re.compile(r"^\d+IN\d+$", re.IGNORECASE)
 # "20-30mmHg" compression, "15-20mmHg" -- ratings, not identifiers.
 _RANGE_UNIT_RE = re.compile(r"^\d+\d*(?:MMHG|MM|CM|IN|V|W|MG|MCG)$", re.IGNORECASE)
 
+# "18-by-7-1/3-Foot", "24x36inch" -- spelled-out dimensions. These survive the
+# other filters because they mix digits and letters like a real part number.
+_SPELLED_DIMENSION_RE = re.compile(
+    r"^\d.*(?:BY\d|FOOT|FEET|INCH|INCHES|YARD|METER|METRE)$", re.IGNORECASE
+)
+
 # Candidate tokens: start and end alphanumeric, may contain - / _ . inside.
 _TOKEN_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9\-/_.]*[A-Za-z0-9])?")
 
@@ -121,6 +127,8 @@ def _is_identifier_shaped(normalized: str) -> bool:
     if _NIN1_RE.match(normalized):
         return False
     if _RANGE_UNIT_RE.match(normalized):
+        return False
+    if _SPELLED_DIMENSION_RE.match(normalized):
         return False
     return True
 

@@ -25,10 +25,13 @@ def eval_typed_retrieval(
     which components are switched on, so the same harness reports the
     lexical-only baseline and the fused result without a second code path.
     """
-    if query_set != "lookup":
-        raise NotImplementedError(f"query_set={query_set!r} arrives in stage 3")
+    if query_set == "lookup":
+        rows = queries.load_lookup_queries()
+    elif query_set == "orders":
+        rows = queries.load_order_queries(split)
+    else:
+        raise ValueError(f"unknown query_set {query_set!r}; use lookup or orders")
 
-    rows = queries.load_lookup_queries()
     if limit:
         rows = rows[:limit]
 
@@ -47,6 +50,9 @@ def eval_typed_retrieval(
         row = metrics.score_query(candidates, q.relevant_doc_ids)
         row["category"] = q.category
         row["query_id"] = q.query_id
+        row["kind"] = q.kind
+        row["has_part_number"] = q.has_part_number
+        row["has_disfluency"] = q.has_disfluency
         per_query.append(row)
 
     latencies.sort()
@@ -56,6 +62,9 @@ def eval_typed_retrieval(
         "retrievers": retrievers,
         "n_queries": len(rows),
         "aggregate": metrics.aggregate(per_query, by="category"),
+        "by_kind": metrics.aggregate(per_query, by="kind"),
+        "by_identifier": metrics.aggregate(per_query, by="has_part_number"),
+        "by_disfluency": metrics.aggregate(per_query, by="has_disfluency"),
         "latency_ms": {
             "p50": round(latencies[len(latencies) // 2], 2),
             "p95": round(latencies[int(len(latencies) * 0.95)], 2),
@@ -100,7 +109,15 @@ def report(result: dict[str, Any]) -> None:
         f"  |  n = {result['n_queries']:,}"
     )
     print()
-    print(metrics.format_table(result["aggregate"]))
+    print(metrics.format_table(result["aggregate"], "by category"))
+    for key, title in (
+        ("by_kind", "by specificity rung -- how much the caller gave us"),
+        ("by_identifier", "by whether the query carries an identifier"),
+        ("by_disfluency", "by whether the query is disfluent"),
+    ):
+        if result.get(key):
+            print()
+            print(metrics.format_table(result[key], title))
     lat = result["latency_ms"]
     print()
     print(f"latency per query   p50 {lat['p50']} ms   p95 {lat['p95']} ms   mean {lat['mean']} ms")

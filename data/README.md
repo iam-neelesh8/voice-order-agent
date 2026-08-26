@@ -81,6 +81,27 @@ Quantities, brand + identifier combinations, partial names, disfluencies.
 Same rule as fitment-rag: generated deterministically from a seed, one
 product per query, answer known.
 
+**Stage 3 result.** Generated as a *specificity ladder* -- six rungs from
+"two AC Delco 41-993 spark plugs" down to bare "spark plugs" -- because how
+much a caller gives you dominates everything else. Measured on dev, BM25:
+
+| rung | recall@1 |
+|---|---|
+| brand + id + noun | 0.970 |
+| brand + id | 0.919 |
+| brand + noun | 0.643 |
+| id alone | 0.447 |
+| modifier + noun | 0.360 |
+| noun alone | 0.117 |
+
+Identifier present vs absent: **0.779 vs 0.373**. That is the project's
+premise, demonstrated on typed text, and the thing stage 4 will damage.
+
+The bottom rungs are ambiguous by construction -- "I need spark plugs" matches
+hundreds of products and only one is gold. That low number is not a broken
+metric, it is the signal that the agent must ask rather than guess, and stage
+6 sets its confirmation thresholds from exactly this table.
+
 **Split discipline** — dev and test are fixed and separate. Every
 configuration choice is made on dev. Every published number comes from test,
 which is not looked at while deciding anything.

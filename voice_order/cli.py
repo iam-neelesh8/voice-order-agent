@@ -32,7 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
     # stage 3
     gen = sub.add_parser("gen-queries", help="stage 3 - generate order queries")
     gen.add_argument("--n", type=int, default=2000)
-    gen.add_argument("--split", choices=["dev", "test"], default="dev")
+    gen.add_argument("--split", choices=["dev", "test", "both"], default="both")
+    gen.add_argument("--seed", type=int, default=20260826)
 
     # stage 4
     aud = sub.add_parser("gen-audio", help="stage 4 - synthesize and degrade the spoken set")
@@ -41,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     # stages 2-8
     ev = sub.add_parser("eval", help="run the evaluation for a stage")
     ev.add_argument("target", choices=["typed", "spoken", "end-to-end", "human"])
+    ev.add_argument("--query-set", choices=["lookup", "orders"], default="lookup")
     ev.add_argument("--split", choices=["dev", "test"], default="dev")
     ev.add_argument("--condition", default="phone")
     ev.add_argument("--retrievers", default="lexical",
@@ -106,6 +108,7 @@ def _cmd_eval(args) -> int:
 
     if args.target == "typed":
         result = run.eval_typed_retrieval(
+            query_set=args.query_set,
             split=args.split,
             limit=args.limit,
             category=args.category,
@@ -117,6 +120,22 @@ def _cmd_eval(args) -> int:
     raise NotImplementedError(
         f"eval {args.target}: not built yet -- see docs/ARCHITECTURE.md"
     )
+
+
+def _cmd_gen_queries(args) -> int:
+    from voice_order.evaluation import queries
+
+    for split in (["dev", "test"] if args.split == "both" else [args.split]):
+        rows = queries.generate_order_queries(args.n, seed=args.seed, split=split)
+        path = queries.order_set_path(split)
+        queries.write_split(rows, path)
+        kinds: dict[str, int] = {}
+        for q in rows:
+            kinds[q.kind] = kinds.get(q.kind, 0) + 1
+        print(f"{split:<6} {len(rows):>6,} queries -> {path}")
+        for kind, n in sorted(kinds.items(), key=lambda kv: -kv[1]):
+            print(f"         {kind:<16}{n:>6,}")
+    return 0
 
 
 def _cmd_query(args) -> int:
@@ -140,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_index(args)
     if args.command == "eval":
         return _cmd_eval(args)
+    if args.command == "gen-queries":
+        return _cmd_gen_queries(args)
     if args.command == "query":
         return _cmd_query(args)
 
