@@ -29,6 +29,8 @@ def catalog(tmp_path, monkeypatch):
     """A tiny throwaway catalog, isolated from the real database."""
     monkeypatch.setenv("VOICE_ORDER_DB", str(tmp_path / "t.db"))
     monkeypatch.setenv("VOICE_ORDER_INDEX_DIR", str(tmp_path / "index"))
+    # Without this the fixture writes its 24-product export over the real one.
+    monkeypatch.setenv("VOICE_ORDER_EXPORT_DIR", str(tmp_path / "exports"))
 
     from voice_order.db import repository, session
 
@@ -148,3 +150,19 @@ def test_skip_verify_bypasses_only_the_model_check(remote_output, tmp_path):
     (bad / "ids.json").write_text(json.dumps({"ids": list(reversed(ids))}), encoding="utf-8")
     with pytest.raises(ValueError):
         portable.import_embeddings(bad, skip_verify=True)
+
+
+def test_the_export_never_escapes_its_configured_directory(catalog, tmp_path, monkeypatch):
+    """Regression: the test fixture once overwrote the real 6 MB export.
+
+    VOICE_ORDER_DB and VOICE_ORDER_INDEX_DIR were redirectable but the export
+    directory was not, so a 24-product fixture silently replaced a 100k-product
+    artifact. Nothing raised; the file was just wrong.
+    """
+    sandbox = tmp_path / "elsewhere"
+    monkeypatch.setenv("VOICE_ORDER_EXPORT_DIR", str(sandbox))
+
+    path, count, _ = portable.export_embed_input()
+
+    assert sandbox in path.parents
+    assert count == 24

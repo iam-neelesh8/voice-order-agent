@@ -46,7 +46,15 @@ _VERIFY_MIN_COSINE = 0.99
 
 
 def export_dir() -> Path:
-    return config.DATA_DIR / "exports"
+    """Where exports land. Redirectable, so tests cannot clobber a real one.
+
+    VOICE_ORDER_DB and VOICE_ORDER_INDEX_DIR were already overridable; this
+    was not, and a test fixture duly overwrote a real 6 MB catalog export with
+    its own 24-product one. Nothing failed -- the file was just quietly wrong.
+    """
+    import os
+
+    return Path(os.environ.get("VOICE_ORDER_EXPORT_DIR") or config.DATA_DIR / "exports")
 
 
 def catalog_fingerprint(ids: list[str]) -> str:

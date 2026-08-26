@@ -32,7 +32,10 @@ from voice_order.evaluation import audio as audio_mod
 
 
 def export_dir() -> Path:
-    return config.DATA_DIR / "exports"
+    """Redirectable via VOICE_ORDER_EXPORT_DIR -- see retrieval/portable.py."""
+    from voice_order.retrieval.portable import export_dir as _dir
+
+    return _dir()
 
 
 def export_asr_input(
