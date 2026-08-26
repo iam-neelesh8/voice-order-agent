@@ -53,6 +53,17 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--nbest", action="store_true")
     ev.add_argument("--part-number", action="store_true")
 
+    # run the heavy embedding step elsewhere
+    exp = sub.add_parser("export-embed-input",
+                         help="write the catalog texts for a GPU box to embed")
+    exp.add_argument("--out", help="destination .jsonl.gz")
+
+    imp = sub.add_parser("import-embeddings",
+                         help="install embeddings built elsewhere, with checks")
+    imp.add_argument("source", help="folder holding embeddings.npy and ids.json")
+    imp.add_argument("--skip-verify", action="store_true",
+                     help="skip the model-match check (not recommended)")
+
     # stages 6-7
     call = sub.add_parser("call", help="stage 6/7 - run the agent")
     call.add_argument("--audio", help="recorded call; omit for live mic (stage 7)")
@@ -138,6 +149,40 @@ def _cmd_gen_queries(args) -> int:
     return 0
 
 
+def _cmd_export_embed_input(args) -> int:
+    from voice_order.retrieval import portable
+
+    path, count, fingerprint = portable.export_embed_input(args.out)
+    size_mb = path.stat().st_size / 1e6
+    print(f"{count:,} texts -> {path}  ({size_mb:.1f} MB)")
+    print(f"catalog fingerprint  {fingerprint}")
+    print()
+    print("next:")
+    print("  1. open notebooks/embed_catalog_gpu.py on Kaggle or Colab (GPU runtime)")
+    print("  2. upload this file, run the cell, download catalog_embeddings.zip")
+    print("  3. unzip it, then:  voice-order import-embeddings catalog_embeddings")
+    return 0
+
+
+def _cmd_import_embeddings(args) -> int:
+    from voice_order.retrieval import portable
+
+    report = portable.import_embeddings(args.source, skip_verify=args.skip_verify)
+    print(f"vectors        {report['vectors']:,} x {report['dim']}")
+    print(f"catalog rows   {report['catalog_rows']:,}  (ids match)")
+    print(f"fingerprint    {report['fingerprint']}")
+    if "verify_min_cosine" in report:
+        print(f"model check    min cosine {report['verify_min_cosine']:.5f}"
+              f"  mean {report['verify_mean_cosine']:.5f}")
+    else:
+        print("model check    SKIPPED")
+    print(f"installed to   {report['installed']}")
+    print()
+    print("dense retrieval is now available:")
+    print("  voice-order eval typed --query-set orders --retrievers lexical,dense")
+    return 0
+
+
 def _cmd_query(args) -> int:
     from voice_order.retrieval.fusion import Retriever
 
@@ -161,6 +206,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_eval(args)
     if args.command == "gen-queries":
         return _cmd_gen_queries(args)
+    if args.command == "export-embed-input":
+        return _cmd_export_embed_input(args)
+    if args.command == "import-embeddings":
+        return _cmd_import_embeddings(args)
     if args.command == "query":
         return _cmd_query(args)
 

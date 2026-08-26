@@ -56,6 +56,30 @@ No config needed to start: the database is one file at `data/voice_order.db`
 and the indexes are files under `data/index/`. Delete both and rerun to reset.
 `voice-order --help` lists one command per stage.
 
+## Running the heavy step on a GPU
+
+Embedding the 100k catalog is ~3 hours on a laptop CPU and about a minute on
+a T4. It is a two-command round trip, not a science project:
+
+```bash
+voice-order export-embed-input          # -> data/exports/embed_input.jsonl.gz (6 MB)
+# run notebooks/embed_catalog_gpu.py on Kaggle or Colab with a GPU runtime,
+# upload that file, download catalog_embeddings.zip, unzip
+voice-order import-embeddings catalog_embeddings
+```
+
+The import is **verified, not trusted**. It refuses the file unless:
+
+- the ids match the current catalog exactly, row for row -- otherwise vectors
+  map to the wrong products, which does not crash, it just returns nonsense;
+- a sample of vectors re-embedded locally matches what came back. Document and
+  query vectors must come from the same model or every cosine score is
+  miscalibrated.
+
+Both failure modes are silent, which is why they are checked rather than
+assumed. Until embeddings are imported the retrieval core runs lexical-only,
+which is a defensible baseline on this corpus.
+
 ## Storage and retrieval, and why they are separate
 
 The database is **storage only** — products, calls, carts, orders. Retrieval
