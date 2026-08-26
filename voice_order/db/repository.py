@@ -14,7 +14,7 @@ import json
 from typing import Iterable, Iterator, Sequence
 
 from voice_order.db.session import connect
-from voice_order.types import Cart, Candidate, Product, Transcript, Turn
+from voice_order.types import Candidate, Cart, Product, Transcript, Turn
 
 # SQLite's default bound-parameter ceiling is well above this; 500 keeps the
 # statement readable and is comfortably inside every version's limit.
@@ -97,7 +97,7 @@ def upsert_products(products: Iterable[Product], batch_size: int = 1000) -> int:
             )
             rows: list[tuple[str, str, str]] = []
             for p in items:
-                rows.extend(part_number_rows({}, p))
+                rows.extend(part_number_rows(p))
             if rows:
                 conn.executemany(
                     "INSERT OR IGNORE INTO product_part_numbers "
@@ -164,7 +164,7 @@ def get_products(parent_asins: Sequence[str]) -> dict[str, Product]:
                     WHERE ppn.parent_asin = p.parent_asin
                 ) AS part_numbers
                 FROM products p WHERE p.parent_asin IN ({marks})
-                """,  # noqa: S608 - placeholders only
+                """,
                 chunk,
             ).fetchall()
             for row in rows:

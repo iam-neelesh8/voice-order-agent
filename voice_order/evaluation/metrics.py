@@ -63,7 +63,9 @@ def aggregate(per_query: list[dict], by: str = "category") -> dict[str, dict]:
         groups.setdefault(key, []).append(row)
     groups["ALL"] = list(per_query)
 
-    metric_names = [k for k in per_query[0] if k.startswith("recall@") or k == "mrr"]
+    metric_names = [
+        k for k in per_query[0] if k.startswith("recall@") or k in ("mrr", "wer")
+    ]
     out: dict[str, dict] = {}
     for key, rows in groups.items():
         summary = {m: mean(r[m] for r in rows) for m in metric_names}
@@ -84,11 +86,16 @@ def format_table(agg: dict[str, dict], title: str = "") -> str:
     lines.append(header)
     lines.append("-" * len(header))
 
-    for key in sorted(agg, key=lambda k: (k == "ALL", k)):
+    # "ALL" sorts last and gets a rule above it. The order is computed once
+    # rather than re-sorting the whole table on every row, and this is safe
+    # when "ALL" is the only key -- the previous version indexed [-2] and
+    # would have raised on a single-group table.
+    order = sorted(agg, key=lambda k: (k == "ALL", k))
+    for key in order:
+        if key == "ALL" and len(order) > 1:
+            lines.append("-" * len(header))
         row = agg[key]
         line = f"{key:<{width}}{row['n']:>7,}"
         line += "".join(f"{row[m]:>11.3f} " for m in metric_names)
         lines.append(line.rstrip())
-        if key != "ALL" and list(sorted(agg, key=lambda k: (k == "ALL", k)))[-2] == key:
-            lines.append("-" * len(header))
     return "\n".join(lines)

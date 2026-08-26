@@ -161,8 +161,14 @@ def load_manifest(split: str, condition: str | None = None) -> list[dict]:
         raise FileNotFoundError(
             f"no manifest at {path} -- run `voice-order gen-audio --split {split}`"
         )
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    return [r for r in rows if condition is None or r["condition"] == condition] if rows else []
+    rows = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    if condition is None:
+        return rows
+    return [r for r in rows if r["condition"] == condition]
 
 
 def describe(split: str) -> dict:

@@ -76,10 +76,9 @@ _WORD = re.compile(r"^[A-Za-z][A-Za-z\-]*$")
 # Words that are never the head noun of a product.
 _NOT_A_NOUN = frozenset(
     """new pack set kit pcs pc piece pieces premium professional heavy duty
-    original genuine oem universal replacement standard deluxe ultra super
-    high low black white red blue green silver gold grey gray chrome clear
-    large small medium mini compact adjustable"""
-    .split()
+        original genuine oem universal replacement standard deluxe ultra
+        super high low black white red blue green silver gold grey gray
+        chrome clear large small medium mini compact adjustable""".split()
 )
 
 

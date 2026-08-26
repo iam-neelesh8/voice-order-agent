@@ -28,21 +28,26 @@ def build_catalog(force: bool = False) -> dict[str, dict]:
         print(f"  streaming first {limit:,} items ...", flush=True)
         path = stream.download_category(name, limit, force=force)
 
-        skipped = 0
-        with_ids = 0
+        counts = {"skipped": 0, "with_ids": 0}
 
-        def products():
-            nonlocal skipped, with_ids
-            for raw in stream.iter_raw_items(path):
-                product = normalize.normalize_item(raw, name)
+        def products(source_path=path, category=name, counts=counts):
+            """Bound as defaults, not closed over.
+
+            This only works today because upsert_products drains the generator
+            inside this iteration. Binding the loop variables makes that a
+            property of the code rather than of the call order.
+            """
+            for raw in stream.iter_raw_items(source_path):
+                product = normalize.normalize_item(raw, category)
                 if product is None:
-                    skipped += 1
+                    counts["skipped"] += 1
                     continue
                 if product.part_numbers:
-                    with_ids += 1
+                    counts["with_ids"] += 1
                 yield product
 
         written = repository.upsert_products(products())
+        skipped, with_ids = counts["skipped"], counts["with_ids"]
         stats[name] = {
             "written": written,
             "skipped": skipped,

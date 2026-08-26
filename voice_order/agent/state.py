@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from voice_order.types import Cart, CartLine, Candidate, OrderIntent
+from voice_order.types import Candidate, Cart, CartLine, OrderIntent
 
 
 class State(str, Enum):

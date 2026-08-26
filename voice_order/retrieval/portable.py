@@ -152,7 +152,9 @@ def import_embeddings(
                 f"index covers {len(ids):,} products but the catalog holds "
                 f"{len(expected):,}. Re-export and re-embed: the catalog changed."
             )
-        first = next(i for i, (a, b) in enumerate(zip(ids, expected)) if a != b)
+        first = next(
+            i for i, (a, b) in enumerate(zip(ids, expected, strict=True)) if a != b
+        )
         raise ValueError(
             f"index ids diverge from the catalog at row {first} "
             f"({ids[first]} vs {expected[first]}). Re-export and re-embed."
@@ -161,8 +163,8 @@ def import_embeddings(
 
     # --- check 2: did the remote box use the same model we query with? ---
     if not skip_verify:
-        from voice_order.retrieval.dense import embed_texts
         from voice_order.db import repository
+        from voice_order.retrieval.dense import embed_texts
 
         step = max(1, len(ids) // _VERIFY_SAMPLE)
         sample_ids = ids[::step][:_VERIFY_SAMPLE]

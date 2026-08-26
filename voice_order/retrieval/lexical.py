@@ -34,10 +34,11 @@ _TOKEN_RE = re.compile(r"[a-z0-9](?:[a-z0-9\-/_.]*[a-z0-9])?")
 # the X cost?", so the interrogative frame is pure noise -- but anything
 # beyond that risks eating a real product word.
 _STOPWORDS = frozenset(
-    """a an the of for and or to in on at by with from is are was were be been
-    what which who whom whose how much many does do did make makes made cost
-    costs price rating rate customers give given this that these those it its
-    you your i me my we our they them their there here""".split()
+    """a an the of for and or to in on at by with from is are was were be
+        been what which who whom whose how much many does do did make makes
+        made cost costs price rating rate customers give given this that
+        these those it its you your i me my we our they them their there
+        here""".split()
 )
 
 
@@ -162,7 +163,7 @@ class LexicalIndex:
         idx, scores = self._retriever.retrieve([tokens], k=fetch, show_progress=False)
 
         out: list[Candidate] = []
-        for doc_i, score in zip(idx[0].tolist(), scores[0].tolist()):
+        for doc_i, score in zip(idx[0].tolist(), scores[0].tolist(), strict=True):
             if score <= 0:
                 continue
             if category and self.categories[doc_i] != category:

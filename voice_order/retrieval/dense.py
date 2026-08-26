@@ -212,7 +212,11 @@ class DenseIndex:
         return self._rank(embed_texts([query])[0], top_k, category)
 
     def search_batch(
-        self, queries: Sequence[str], top_k: int = 50, chunk: int = 256
+        self,
+        queries: Sequence[str],
+        top_k: int = 50,
+        category: str | None = None,
+        chunk: int = 256,
     ) -> list[list[Candidate]]:
         """Score many queries in one matmul. The eval harness path.
 
@@ -223,5 +227,5 @@ class DenseIndex:
         for start in range(0, len(queries), chunk):
             block = embed_texts(list(queries[start : start + chunk]))
             for row in block:
-                out.append(self._rank(row, top_k, None))
+                out.append(self._rank(row, top_k, category))
         return out

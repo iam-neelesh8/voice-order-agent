@@ -93,7 +93,7 @@ def healthcheck() -> dict[str, Any]:
             for table in TABLES:
                 if table in present:
                     out["tables"][table] = conn.execute(
-                        f"SELECT count(*) FROM {table}"  # noqa: S608 - fixed identifiers
+                        f"SELECT count(*) FROM {table}"
                     ).fetchone()[0]
                 else:
                     out["tables"][table] = None  # schema not applied yet

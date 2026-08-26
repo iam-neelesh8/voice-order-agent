@@ -186,4 +186,7 @@ def report(result: dict[str, Any]) -> None:
     lat = result["latency_ms"]
     if lat.get("mean"):
         print()
-        print(f"latency per query   p50 {lat['p50']} ms   p95 {lat['p95']} ms   mean {lat['mean']} ms")
+        print(
+            f"latency per query   p50 {lat['p50']} ms"
+            f"   p95 {lat['p95']} ms   mean {lat['mean']} ms"
+        )

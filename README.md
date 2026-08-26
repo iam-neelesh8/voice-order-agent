@@ -37,6 +37,7 @@ Stage 0 of 8 — scaffold. Nothing is implemented yet; every module raises
 
 | doc | what it covers |
 |---|---|
+| [docs/KAGGLE.md](docs/KAGGLE.md) | step-by-step for the two GPU jobs |
 | [docs/voice-order-agent.drawio](docs/voice-order-agent.drawio) | **start here** — 4-page draw.io diagram: build order, system, one turn, data pipeline |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | the same thing in text + mermaid, for reading on GitHub |
 | [data/README.md](data/README.md) | the four datasets, what is committed and what is not |
@@ -80,6 +81,7 @@ voice-order import-transcripts transcripts
 ```
 
 Both imports are **verified, not trusted** -- see below.
+Step-by-step Kaggle walkthrough: [docs/KAGGLE.md](docs/KAGGLE.md).
 
 Embedding the 100k catalog is ~3 hours on a laptop CPU and about a minute on
 a T4. It is a two-command round trip, not a science project:

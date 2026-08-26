@@ -65,8 +65,15 @@ class PartNumberIndex:
     def load(cls, index_dir: Path | None = None) -> "PartNumberIndex":
         raise NotImplementedError("stage 5")
 
-    def search(self, query: str, top_k: int = 50) -> list[Candidate]:
+    def search(
+        self, query: str, top_k: int = 50, category: str | None = None
+    ) -> list[Candidate]:
         """Match extracted identifiers against the index, in tiers.
+
+        `category` is accepted so every retriever presents the same interface
+        to `fusion`. Fusion calls all of them identically, and a retriever that
+        quietly omitted the argument would raise the moment stage 5 switched
+        it on.
 
         Exact normalised match scores highest, then edit-distance 1, then
         phonetic. Which tier fired is recorded in `Candidate.component_scores`

@@ -51,5 +51,22 @@ voice_order = ["db/*.sql"]
 [tool.ruff]
 line-length = 100
 
+[tool.ruff.lint]
+select = ["F", "E", "W", "B", "SIM", "C4", "I"]
+ignore = [
+    # Would flatten readable multi-line word lists into 400-character literals.
+    "SIM905",
+    # Nested ifs are often clearer than a compound condition here.
+    "SIM102",
+    # `_is_identifier_shaped` is a sequence of guard clauses; collapsing the
+    # last one into `return not ...` would make it read differently from the
+    # five rejections above it.
+    "SIM103",
+    # Explicit if/else beats a ternary when the branches carry comments.
+    "SIM108",
+    # Nested `with` blocks are kept where a comment separates them.
+    "SIM117",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

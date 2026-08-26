@@ -86,13 +86,13 @@ _TOKEN_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9\-/_.]*[A-Za-z0-9])?")
 # but "5000 IU" tokenizes into two tokens and the number sails through on its
 # own. A bare number followed by a unit word is a measure, not a part number.
 _UNIT_WORDS = frozenset(
-    """mm cm in inch inches ft feet yd yard v volt volts w watt watts a amp amps
-    ah mah wh oz ounce ounces lb lbs pound pounds kg g gram grams ml l liter
-    liters litre qt quart gal gallon pc pcs piece pieces pack packs pk ct count
-    set sets pair pairs psi rpm hp nm hz khz mhz ghz kb mb gb tb mcg mg iu ply
-    tablet tablets capsule capsules softgel softgels serving servings sheet
-    sheets roll rolls wipe wipes load loads floz tsp tbsp cal kcal mmhg
-    sqft sq""".split()
+    """mm cm in inch inches ft feet yd yard v volt volts w watt watts a amp
+        amps ah mah wh oz ounce ounces lb lbs pound pounds kg g gram grams
+        ml l liter liters litre qt quart gal gallon pc pcs piece pieces pack
+        packs pk ct count set sets pair pairs psi rpm hp nm hz khz mhz ghz
+        kb mb gb tb mcg mg iu ply tablet tablets capsule capsules softgel
+        softgels serving servings sheet sheets roll rolls wipe wipes load
+        loads floz tsp tbsp cal kcal mmhg sqft sq""".split()
 )
 
 
@@ -261,7 +261,7 @@ def normalize_item(raw: dict, category: str) -> Product | None:
     )
 
 
-def part_number_rows(raw: dict, product: Product) -> list[tuple[str, str, str]]:
+def part_number_rows(product: Product) -> list[tuple[str, str, str]]:
     """`(parent_asin, part_number, source)` rows for `product_part_numbers`."""
     pairs = extract_part_numbers(product.title, product.details, product.features)
     return [(product.parent_asin, pn, source) for pn, source in pairs]

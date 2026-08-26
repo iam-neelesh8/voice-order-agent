@@ -64,8 +64,10 @@ def _parse_retrievers(spec: str | list[str] | None) -> list[str]:
 class Retriever:
     """Holds the loaded indexes. Built once per process.
 
-    Ablation flags exist so stage 5 can answer "which of the three actually
-    helped" instead of only "the bundle helped".
+    Which retrievers are loaded is the ablation surface: `load(retrievers=...)`
+    selects them by name, so stage 5 can answer "which of the three actually
+    helped" rather than only "the bundle helped". Every retriever must accept
+    the same `(query, top_k, category)` signature -- see `_search_all`.
     """
 
     def __init__(self, indexes: dict[str, object], use_nbest: bool = False) -> None:
@@ -74,7 +76,9 @@ class Retriever:
         self._cfg = config.load("retrieval")
 
     @classmethod
-    def load(cls, retrievers: str | list[str] | None = None, use_nbest: bool = False) -> "Retriever":
+    def load(
+        cls, retrievers: str | list[str] | None = None, use_nbest: bool = False
+    ) -> "Retriever":
         """Load whichever indexes are requested. Raises if one is missing."""
         names = _parse_retrievers(retrievers)
         indexes: dict[str, object] = {}
