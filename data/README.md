@@ -122,8 +122,19 @@ humans are right.
 ## Open questions
 
 - How many categories before per-category results stop being meaningful?
-- Do the fitment-rag lookup queries transfer at all, or is order phrasing
-  different enough that only the new set counts?
+- ~~Do the fitment-rag lookup queries transfer at all, or is order phrasing
+  different enough that only the new set counts?~~
+  **Partly answered in stage 2, and the answer is sharper than expected.**
+  All 2,000 gold ids are present in our slice, so the set is usable and gives
+  a real first number (recall@1 0.744, recall@20 0.931, MRR 0.811 on BM25).
+  But only **6% of its queries contain an identifier at all** -- they are
+  phrased as attribute questions ("How much does the fel pro plenum cost?").
+  So this set measures name-based retrieval and cannot test the premise the
+  project is built on. Worse, the 6% that *do* carry an identifier score
+  lower (recall@1 0.579 vs 0.755), because they are short ambiguous numerics
+  like `1080` and `3344` that collide across the catalog.
+  The stage 3 order generator is therefore not optional -- it is the only
+  thing that will put part numbers in front of the retriever.
 - ~~Is pgvector fast enough at 100k, or does FAISS stay a separate index?~~
   Answered before building: neither is needed. 100k x 384 float32 is ~150 MB
   and a brute-force scan is one matmul. The measured latency is the result;

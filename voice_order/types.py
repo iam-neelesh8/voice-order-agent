@@ -55,13 +55,19 @@ class Transcript:
 
 @dataclass(frozen=True)
 class Candidate:
-    """One retrieval result, with the trail that produced it."""
+    """One retrieval result, with the trail that produced it.
 
-    product: Product
+    Retrievers return these carrying only `parent_asin`; `product` is filled
+    in by a single hydration pass after fusion, so the row lookup happens once
+    per query instead of once per retriever.
+    """
+
+    parent_asin: str
     score: float
     # Which retrievers fired and what they scored — this is what makes a bad
     # order debuggable rather than mysterious.
     component_scores: dict[str, float] = field(default_factory=dict)
+    product: Product | None = None
     matched_hypothesis: str | None = None
 
 

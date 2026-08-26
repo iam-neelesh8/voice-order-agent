@@ -14,7 +14,10 @@ constructor argument and a rerun -- not a schema change.
 
 from __future__ import annotations
 
+from voice_order import config
 from voice_order.types import Candidate, Transcript
+
+ALL_RETRIEVERS = ("lexical", "dense", "part_number")
 
 
 def reciprocal_rank_fusion(
@@ -29,38 +32,117 @@ def reciprocal_rank_fusion(
     normalising them introduces a tuning knob that would have to be fitted --
     on dev, and then defended.
     """
-    raise NotImplementedError("stage 2")
+    weights = weights or {}
+    fused: dict[str, float] = {}
+    components: dict[str, dict[str, float]] = {}
+
+    for name, ranked in ranked_lists.items():
+        weight = float(weights.get(name, 1.0))
+        for rank, candidate in enumerate(ranked, start=1):
+            asin = candidate.parent_asin
+            fused[asin] = fused.get(asin, 0.0) + weight / (k + rank)
+            components.setdefault(asin, {}).update(candidate.component_scores)
+
+    order = sorted(fused, key=lambda a: fused[a], reverse=True)
+    return [
+        Candidate(parent_asin=a, score=fused[a], component_scores=components.get(a, {}))
+        for a in order
+    ]
+
+
+def _parse_retrievers(spec: str | list[str] | None) -> list[str]:
+    if spec is None:
+        return ["lexical"]
+    if isinstance(spec, str):
+        spec = [s.strip() for s in spec.split(",") if s.strip()]
+    unknown = [s for s in spec if s not in ALL_RETRIEVERS]
+    if unknown:
+        raise ValueError(f"unknown retriever(s) {unknown}; choose from {ALL_RETRIEVERS}")
+    return list(spec)
 
 
 class Retriever:
-    """Holds the three indexes. Built once per process.
+    """Holds the loaded indexes. Built once per process.
 
     Ablation flags exist so stage 5 can answer "which of the three actually
     helped" instead of only "the bundle helped".
     """
 
-    def __init__(
-        self,
-        use_lexical: bool = True,
-        use_dense: bool = True,
-        use_part_number: bool = False,   # stage 5; off for the stage 2/4 baseline
-        use_nbest: bool = False,         # stage 5; off for the stage 2/4 baseline
-    ) -> None:
-        raise NotImplementedError("stage 2")
+    def __init__(self, indexes: dict[str, object], use_nbest: bool = False) -> None:
+        self.indexes = indexes
+        self.use_nbest = use_nbest
+        self._cfg = config.load("retrieval")
 
     @classmethod
-    def load(cls, **flags) -> "Retriever":
-        """Load whichever indexes the flags require. Raises if one is missing."""
-        raise NotImplementedError("stage 2")
+    def load(cls, retrievers: str | list[str] | None = None, use_nbest: bool = False) -> "Retriever":
+        """Load whichever indexes are requested. Raises if one is missing."""
+        names = _parse_retrievers(retrievers)
+        indexes: dict[str, object] = {}
+
+        if "lexical" in names:
+            from voice_order.retrieval.lexical import LexicalIndex
+
+            indexes["lexical"] = LexicalIndex.load()
+        if "dense" in names:
+            from voice_order.retrieval.dense import DenseIndex
+
+            indexes["dense"] = DenseIndex.load()
+        if "part_number" in names:
+            from voice_order.retrieval.part_number import PartNumberIndex
+
+            indexes["part_number"] = PartNumberIndex.load()
+
+        return cls(indexes, use_nbest=use_nbest)
+
+    def _search_all(
+        self, query: str, top_k: int, category: str | None
+    ) -> dict[str, list[Candidate]]:
+        per_retriever: dict[str, list[Candidate]] = {}
+        for name, index in self.indexes.items():
+            fetch = int(self._cfg.get(f"{name}.top_k", 50))
+            per_retriever[name] = index.search(query, top_k=max(fetch, top_k), category=category)
+        return per_retriever
 
     def search_text(
-        self, query: str, top_k: int = 20, category: str | None = None
+        self, query: str, top_k: int = 20, category: str | None = None, hydrate: bool = False
     ) -> list[Candidate]:
-        """One string in, fused and hydrated candidates out.
+        """One string in, fused candidates out. The stage 2/3 eval entry point.
 
-        The stage 2/3 eval entry point.
+        Hydration is off by default: the eval only compares ids, and looking up
+        20 product rows per query across 2,000 queries is pure overhead. The
+        agent turns it on because it has to read the product back to a caller.
         """
-        raise NotImplementedError("stage 2")
+        per_retriever = self._search_all(query, top_k, category)
+
+        # One retriever needs no fusion, and skipping RRF keeps the baseline
+        # exactly what BM25 ranked rather than a re-ranked copy of it.
+        if len(per_retriever) == 1:
+            fused = next(iter(per_retriever.values()))[:top_k]
+        else:
+            fused = reciprocal_rank_fusion(
+                per_retriever,
+                k=int(self._cfg.get("fusion.rrf_k", 60)),
+                weights=dict(self._cfg.get("fusion.weights", {})),
+            )[:top_k]
+
+        return self.hydrate(fused) if hydrate else fused
+
+    @staticmethod
+    def hydrate(candidates: list[Candidate]) -> list[Candidate]:
+        """Attach full products in one batched lookup."""
+        from voice_order.db import repository
+
+        products = repository.get_products([c.parent_asin for c in candidates])
+        return [
+            Candidate(
+                parent_asin=c.parent_asin,
+                score=c.score,
+                component_scores=c.component_scores,
+                product=products.get(c.parent_asin),
+                matched_hypothesis=c.matched_hypothesis,
+            )
+            for c in candidates
+        ]
 
     def search_transcript(self, transcript: Transcript, top_k: int = 20) -> list[Candidate]:
         """Retrieve over every hypothesis and fuse, weighted by ASR score.
@@ -82,11 +164,31 @@ class Retriever:
         raise NotImplementedError("stage 5")
 
 
-def build_all_indexes() -> dict[str, int]:
-    """Build lexical, dense and part-number indexes from the database.
+def build_all_indexes(which: str = "all") -> dict[str, int]:
+    """Build the requested indexes from the database.
 
-    Returns item counts per index. This is `voice-order index all`, and it is
-    the step that has to be rerun whenever the catalog changes -- the indexes
-    are derived data, and nothing checks that they are in sync.
+    Returns item counts per index. This is `voice-order index`, and it has to
+    be rerun whenever the catalog changes -- the indexes are derived data, and
+    nothing checks that they are in sync.
     """
-    raise NotImplementedError("stage 2")
+    built: dict[str, int] = {}
+
+    if which in ("all", "lexical"):
+        from voice_order.retrieval.lexical import LexicalIndex
+
+        print("  building lexical (BM25) ...", flush=True)
+        built["lexical"] = len(LexicalIndex.build())
+
+    if which in ("all", "dense"):
+        from voice_order.retrieval.dense import DenseIndex
+
+        print("  building dense (embeddings) ...", flush=True)
+        built["dense"] = len(DenseIndex.build())
+
+    if which in ("all", "part-number", "part_number"):
+        from voice_order.retrieval.part_number import PartNumberIndex
+
+        print("  building part-number ...", flush=True)
+        built["part_number"] = len(PartNumberIndex.build())
+
+    return built

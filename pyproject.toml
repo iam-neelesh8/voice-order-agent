@@ -17,7 +17,10 @@ dependencies = [
 # stage 2 - retrieval
 retrieval = [
     "bm25s>=0.2",             # in-process BM25, same scores everywhere
-    "sentence-transformers>=3.0",
+    # fastembed runs bge-small-en-v1.5 on ONNX Runtime. sentence-transformers
+    # would pull a multi-hundred-MB torch wheel for a 33M-parameter model, and
+    # install weight is a real cost for something meant to be forked and run.
+    "fastembed>=0.4",
     "metaphone>=0.6",         # stage 5 - phonetic part-number matching
 ]
 # stages 4, 7 - speech

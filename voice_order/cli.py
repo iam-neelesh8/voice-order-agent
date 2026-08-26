@@ -43,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("target", choices=["typed", "spoken", "end-to-end", "human"])
     ev.add_argument("--split", choices=["dev", "test"], default="dev")
     ev.add_argument("--condition", default="phone")
+    ev.add_argument("--retrievers", default="lexical",
+                    help="comma separated: lexical,dense,part_number")
+    ev.add_argument("--limit", type=int, help="only the first N queries (smoke runs)")
+    ev.add_argument("--category", help="restrict retrieval to one category")
     # stage 5 ablation -- each retrieval component switched on separately
     ev.add_argument("--nbest", action="store_true")
     ev.add_argument("--part-number", action="store_true")
@@ -86,6 +90,45 @@ def _cmd_catalog(args) -> int:
     return 0
 
 
+def _cmd_index(args) -> int:
+    from voice_order.retrieval.fusion import build_all_indexes
+
+    built = build_all_indexes(args.which)
+    for name, n in built.items():
+        print(f"  {name:<14}{n:>10,} documents")
+    print()
+    print("indexes are derived data -- rebuild after any catalog change")
+    return 0
+
+
+def _cmd_eval(args) -> int:
+    from voice_order.evaluation import run
+
+    if args.target == "typed":
+        result = run.eval_typed_retrieval(
+            split=args.split,
+            limit=args.limit,
+            category=args.category,
+            retrievers=args.retrievers,
+        )
+        run.report(result)
+        return 0
+
+    raise NotImplementedError(
+        f"eval {args.target}: not built yet -- see docs/ARCHITECTURE.md"
+    )
+
+
+def _cmd_query(args) -> int:
+    from voice_order.retrieval.fusion import Retriever
+
+    retriever = Retriever.load(retrievers="lexical")
+    for i, c in enumerate(retriever.search_text(args.text, top_k=args.top_k, hydrate=True), 1):
+        title = c.product.title[:78] if c.product else "(missing)"
+        print(f"{i:>3}. {c.score:7.3f}  {c.parent_asin}  {title}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -93,6 +136,12 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_db(args)
     if args.command == "catalog":
         return _cmd_catalog(args)
+    if args.command == "index":
+        return _cmd_index(args)
+    if args.command == "eval":
+        return _cmd_eval(args)
+    if args.command == "query":
+        return _cmd_query(args)
 
     raise NotImplementedError(
         f"{args.command}: not built yet -- see docs/ARCHITECTURE.md for the stage it belongs to"
