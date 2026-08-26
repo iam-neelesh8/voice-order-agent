@@ -16,21 +16,40 @@ decode:
 # Stage 4 — how the spoken test set is built.
 synthesis:
   engine: piper
-  voices:                  # 4+, or this measures one speaker, not the ASR
+  # 4+, or this measures one speaker rather than the ASR. Two accents on
+  # purpose: en_GB voices are the closest free proxy for the accent spread
+  # the stage 8 human recordings are meant to check.
+  voices:
     - en_US-lessac-medium
     - en_US-amy-medium
+    - en_US-ryan-medium
     - en_GB-alan-medium
-    - en_US-ryan-high
-  sample_rate: 16000
+    - en_GB-cori-medium
   out_dir: data/audio/synthetic
+  # Lossless, and roughly half the size of wav. 2,000 clips x 5 conditions is
+  # the difference between a set you can upload to a GPU box and one you cannot.
+  format: flac
 
 degradation:
-  # Narrowband phone codec. Clean audio is kept too — the gap is a result.
+  # G.711: 300-3400 Hz passband, 8 kHz, 8-bit mu-law. Implemented in numpy,
+  # not ffmpeg -- see voice_order/evaluation/degrade.py for why.
+  # Clean audio is kept too; the clean-vs-phone gap is itself a result.
   phone:
     sample_rate: 8000
-    codec: pcm_mulaw
-    channels: 1
+    passband: [300, 3400]
   noise:
-    corpus: data/noise      # MUSAN subset
+    # Synthesised, not MUSAN. MUSAN is an 11 GB single tarball with no subset,
+    # which is a poor trade for a repo whose point is that it clones and runs.
+    # Babble is built from the test set's own clips -- the hardest case for
+    # ASR, because the interference has speech statistics.
+    kinds: [babble, pink, hum]
     snr_db: [20, 10, 5]
   seed: 20260826
+
+# The conditions the spoken set is rendered in. Each is a separate eval run.
+conditions:
+  - clean            # no degradation -- the ceiling
+  - phone            # G.711 only, quiet line
+  - phone_snr20      # light background
+  - phone_snr10      # realistic call
+  - phone_snr5       # bad call

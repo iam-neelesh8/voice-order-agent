@@ -27,9 +27,12 @@ retrieval = [
 speech = [
     "faster-whisper>=1.0",
     "piper-tts>=1.2",
-    "soundfile>=0.12",
+    "soundfile>=0.12",        # FLAC read/write
+    "scipy>=1.11",            # resampling and the phone band-pass
     "jiwer>=3.0",             # WER
 ]
+# No ffmpeg. The phone codec is numpy + scipy, so there is no system
+# dependency to install and the output is identical on every platform.
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [project.scripts]

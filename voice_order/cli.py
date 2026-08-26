@@ -38,6 +38,14 @@ def build_parser() -> argparse.ArgumentParser:
     # stage 4
     aud = sub.add_parser("gen-audio", help="stage 4 - synthesize and degrade the spoken set")
     aud.add_argument("--split", choices=["dev", "test"], default="dev")
+    aud.add_argument("--limit", type=int, help="only the first N queries (smoke runs)")
+    aud.add_argument("--force", action="store_true", help="re-render existing clips")
+
+    tr = sub.add_parser("transcribe", help="stage 4 - run ASR over a condition")
+    tr.add_argument("--split", choices=["dev", "test"], default="dev")
+    tr.add_argument("--condition", default="phone")
+    tr.add_argument("--model", help="override the model in configs/asr.yaml")
+    tr.add_argument("--limit", type=int)
 
     # stages 2-8
     ev = sub.add_parser("eval", help="run the evaluation for a stage")
@@ -128,9 +136,40 @@ def _cmd_eval(args) -> int:
         run.report(result)
         return 0
 
+    if args.target == "spoken":
+        result = run.eval_spoken_retrieval(
+            split=args.split,
+            condition=args.condition,
+            nbest=args.nbest,
+            retrievers=args.retrievers,
+            limit=args.limit,
+        )
+        run.report(result)
+        return 0
+
     raise NotImplementedError(
         f"eval {args.target}: not built yet -- see docs/ARCHITECTURE.md"
     )
+
+
+def _cmd_transcribe(args) -> int:
+    from voice_order.asr import batch
+
+    print(f"transcribing {args.split}/{args.condition} ...", flush=True)
+    _, stats = batch.transcribe_manifest(
+        args.split, args.condition, model=args.model, limit=args.limit
+    )
+    print()
+    print(f"model         {stats['model']}")
+    print(f"clips         {stats['total']:,}  "
+          f"(resumed {stats['resumed']:,}, new {stats['transcribed']:,})")
+    if stats["missing_audio"]:
+        print(f"missing audio {stats['missing_audio']:,}")
+    if stats["empty"]:
+        print(f"empty results {stats['empty']:,}")
+    print(f"elapsed       {stats['elapsed_s']:.0f}s")
+    print(f"written to    {stats['path']}")
+    return 0
 
 
 def _cmd_gen_queries(args) -> int:
@@ -146,6 +185,27 @@ def _cmd_gen_queries(args) -> int:
         print(f"{split:<6} {len(rows):>6,} queries -> {path}")
         for kind, n in sorted(kinds.items(), key=lambda kv: -kv[1]):
             print(f"         {kind:<16}{n:>6,}")
+    return 0
+
+
+def _cmd_gen_audio(args) -> int:
+    from voice_order.evaluation import audio
+
+    stats = audio.build_spoken_set(args.split, limit=args.limit, force=args.force)
+    print(f"synthesised {stats['synthesised']:,}  |  reused {stats['skipped']:,}"
+          f"  |  wrote {stats['clips']:,} clips")
+    print()
+    print(f"{'condition':<16}{'clips':>8}{'audio':>12}{'size':>10}")
+    print("-" * 46)
+    total_mb = 0.0
+    for condition, info in audio.describe(args.split).items():
+        total_mb += info["mb"]
+        mins = info["seconds"] / 60
+        print(f"{condition:<16}{info['clips']:>8,}{mins:>10.1f}m{info['mb']:>9.1f}M")
+    print("-" * 46)
+    print(f"{'total':<16}{'':>8}{'':>12}{total_mb:>9.1f}M")
+    print()
+    print(f"manifest: {audio.split_dir(args.split) / audio.MANIFEST_NAME}")
     return 0
 
 
@@ -206,6 +266,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_eval(args)
     if args.command == "gen-queries":
         return _cmd_gen_queries(args)
+    if args.command == "transcribe":
+        return _cmd_transcribe(args)
+    if args.command == "gen-audio":
+        return _cmd_gen_audio(args)
     if args.command == "export-embed-input":
         return _cmd_export_embed_input(args)
     if args.command == "import-embeddings":
