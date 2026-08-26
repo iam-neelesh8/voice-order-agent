@@ -56,7 +56,30 @@ No config needed to start: the database is one file at `data/voice_order.db`
 and the indexes are files under `data/index/`. Delete both and rerun to reset.
 `voice-order --help` lists one command per stage.
 
-## Running the heavy step on a GPU
+## Running the heavy steps on a GPU
+
+Two steps want a GPU. Both are the same round trip: export a file, run a
+notebook, import the result with checks.
+
+| step | this laptop, measured | a T4 |
+|---|---|---|
+| embed 100k catalog titles | ~3 hours | ~1 minute |
+| transcribe 5 conditions, 1-best | ~6.75 hours | under an hour |
+| transcribe 5 conditions, n-best | ~34 hours | ~2 hours |
+
+```bash
+# embeddings
+voice-order export-embed-input          # -> data/exports/embed_input.jsonl.gz (6 MB)
+# run notebooks/embed_catalog_gpu.py, download + unzip
+voice-order import-embeddings catalog_embeddings
+
+# transcripts
+voice-order export-asr-input            # -> data/exports/asr_dev.zip
+# run notebooks/transcribe_gpu.py, download + unzip
+voice-order import-transcripts transcripts
+```
+
+Both imports are **verified, not trusted** -- see below.
 
 Embedding the 100k catalog is ~3 hours on a laptop CPU and about a minute on
 a T4. It is a two-command round trip, not a science project:
@@ -68,17 +91,17 @@ voice-order export-embed-input          # -> data/exports/embed_input.jsonl.gz (
 voice-order import-embeddings catalog_embeddings
 ```
 
-The import is **verified, not trusted**. It refuses the file unless:
+`import-embeddings` refuses the file unless the ids match the catalog exactly
+row for row, and a sample re-embedded locally matches what came back -- document
+and query vectors must come from the same model or every cosine score is
+miscalibrated.
 
-- the ids match the current catalog exactly, row for row -- otherwise vectors
-  map to the wrong products, which does not crash, it just returns nonsense;
-- a sample of vectors re-embedded locally matches what came back. Document and
-  query vectors must come from the same model or every cosine score is
-  miscalibrated.
+`import-transcripts` refuses any file whose query_ids are not in the manifest,
+because evaluating those would score one query's retrieval against another
+query's speech.
 
-Both failure modes are silent, which is why they are checked rather than
-assumed. Until embeddings are imported the retrieval core runs lexical-only,
-which is a defensible baseline on this corpus.
+Every one of those failures is silent: nothing crashes, the answers are just
+wrong. That is why they are checked rather than assumed.
 
 ## Storage and retrieval, and why they are separate
 

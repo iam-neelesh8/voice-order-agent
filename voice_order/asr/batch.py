@@ -67,6 +67,7 @@ def transcribe_manifest(
     split: str = "dev",
     condition: str = "phone",
     model: str | None = None,
+    n_best: int | None = None,
     limit: int | None = None,
     audio_root: Path | None = None,
     out_path: Path | None = None,
@@ -76,7 +77,7 @@ def transcribe_manifest(
     from voice_order.asr.transcribe import Transcriber
     from voice_order.evaluation import audio as audio_mod
 
-    transcriber = Transcriber(model=model)
+    transcriber = Transcriber(model=model, n_best=n_best)
     model_name = transcriber.model_name
 
     rows = audio_mod.load_manifest(split, condition)

@@ -32,13 +32,17 @@ class Transcriber:
         model: str | None = None,
         device: str | None = None,
         compute_type: str | None = None,
+        n_best: int | None = None,
     ) -> None:
         cfg = config.load("asr")
         self.model_name = model or str(cfg.get("model.name", "small.en"))
         self.device = device or str(cfg.get("model.device", "cpu"))
         self.compute_type = compute_type or str(cfg.get("model.compute_type", "int8"))
         self.beam_size = int(cfg.get("decode.beam_size", 5))
-        self.n_best = int(cfg.get("decode.n_best", 5))
+        # n_best costs a full decode each. Stage 4 only needs 1-best (WER and
+        # the retrieval drop); stage 5 is what actually consumes alternatives,
+        # so the two are run separately rather than paying 5x up front.
+        self.n_best = int(n_best or cfg.get("decode.n_best", 5))
         self.vad_filter = bool(cfg.get("decode.vad_filter", True))
         self._model = None
 

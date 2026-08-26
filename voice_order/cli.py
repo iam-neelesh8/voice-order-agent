@@ -45,6 +45,8 @@ def build_parser() -> argparse.ArgumentParser:
     tr.add_argument("--split", choices=["dev", "test"], default="dev")
     tr.add_argument("--condition", default="phone")
     tr.add_argument("--model", help="override the model in configs/asr.yaml")
+    tr.add_argument("--n-best", type=int,
+                    help="decodes per clip; 1 is ~5x faster and enough for stage 4")
     tr.add_argument("--limit", type=int)
 
     # stages 2-8
@@ -65,6 +67,17 @@ def build_parser() -> argparse.ArgumentParser:
     exp = sub.add_parser("export-embed-input",
                          help="write the catalog texts for a GPU box to embed")
     exp.add_argument("--out", help="destination .jsonl.gz")
+
+    expa = sub.add_parser("export-asr-input",
+                          help="bundle audio + manifest for a GPU box to transcribe")
+    expa.add_argument("--split", choices=["dev", "test"], default="dev")
+    expa.add_argument("--condition", action="append",
+                      help="limit to one condition (repeatable); default is all")
+
+    impt = sub.add_parser("import-transcripts",
+                          help="install transcripts produced elsewhere, with checks")
+    impt.add_argument("source", help="folder of *.jsonl, or a single file")
+    impt.add_argument("--split", choices=["dev", "test"], default="dev")
 
     imp = sub.add_parser("import-embeddings",
                          help="install embeddings built elsewhere, with checks")
@@ -157,7 +170,8 @@ def _cmd_transcribe(args) -> int:
 
     print(f"transcribing {args.split}/{args.condition} ...", flush=True)
     _, stats = batch.transcribe_manifest(
-        args.split, args.condition, model=args.model, limit=args.limit
+        args.split, args.condition, model=args.model,
+        n_best=args.n_best, limit=args.limit,
     )
     print()
     print(f"model         {stats['model']}")
@@ -206,6 +220,38 @@ def _cmd_gen_audio(args) -> int:
     print(f"{'total':<16}{'':>8}{'':>12}{total_mb:>9.1f}M")
     print()
     print(f"manifest: {audio.split_dir(args.split) / audio.MANIFEST_NAME}")
+    return 0
+
+
+def _cmd_export_asr_input(args) -> int:
+    from voice_order.asr import portable
+
+    path, stats = portable.export_asr_input(args.split, args.condition)
+    print(f"{stats['clips']:,} clips -> {path}  ({stats['mb']} MB)")
+    print(f"conditions: {', '.join(stats['conditions'])}")
+    if stats["missing"]:
+        print(f"  ! {stats['missing']:,} manifest rows had no audio file")
+    print()
+    print("next:")
+    print("  1. open notebooks/transcribe_gpu.py on Kaggle or Colab (GPU runtime)")
+    print("  2. upload this zip, run the cell, download transcripts.zip")
+    print("  3. unzip it, then:  voice-order import-transcripts transcripts")
+    return 0
+
+
+def _cmd_import_transcripts(args) -> int:
+    from voice_order.asr import portable
+
+    installed = portable.import_transcripts(args.source, args.split)
+    print(f"{'condition':<16}{'model':<14}{'clips':>8}{'coverage':>10}")
+    print("-" * 48)
+    for row in installed:
+        print(f"{row['condition']:<16}{row['model']:<14}{row['clips']:>8,}"
+              f"{row['coverage']:>9.1%}")
+        if row["empty"]:
+            print(f"  ! {row['empty']:,} clips produced no transcript at all")
+    print()
+    print("now:  voice-order eval spoken --condition <condition>")
     return 0
 
 
@@ -270,6 +316,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_transcribe(args)
     if args.command == "gen-audio":
         return _cmd_gen_audio(args)
+    if args.command == "export-asr-input":
+        return _cmd_export_asr_input(args)
+    if args.command == "import-transcripts":
+        return _cmd_import_transcripts(args)
     if args.command == "export-embed-input":
         return _cmd_export_embed_input(args)
     if args.command == "import-embeddings":
