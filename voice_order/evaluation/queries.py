@@ -38,7 +38,7 @@ class EvalQuery:
 
 
 def evalset_dir() -> Path:
-    return config.DATA_DIR / "evalsets"
+    return config.data_dir() / "evalsets"
 
 
 def load_lookup_queries(path: Path | None = None) -> list[EvalQuery]:

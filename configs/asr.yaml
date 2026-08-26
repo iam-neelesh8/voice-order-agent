@@ -26,6 +26,12 @@ synthesis:
     - en_GB-alan-medium
     - en_GB-cori-medium
   out_dir: data/audio/synthetic
+  # Piper is stochastic by default -- VITS samples a duration predictor, so
+  # the same sentence twice yields different audio and there is no seed to
+  # set. This zeroes the noise scales, which removes the sampling and makes
+  # the spoken set genuinely regenerable. Costs some prosodic variation;
+  # the five voices above supply speaker variety instead.
+  deterministic: true
   # Lossless, and roughly half the size of wav. 2,000 clips x 5 conditions is
   # the difference between a set you can upload to a GPU box and one you cannot.
   format: flac

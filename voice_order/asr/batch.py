@@ -28,7 +28,7 @@ from voice_order.types import Hypothesis, Transcript
 
 
 def transcripts_dir() -> Path:
-    return config.DATA_DIR / "transcripts"
+    return config.data_dir() / "transcripts"
 
 
 def transcripts_path(split: str, condition: str, model: str) -> Path:
@@ -89,7 +89,7 @@ def transcribe_manifest(
 
     done = _done_ids(path)
     todo = [r for r in rows if r["query_id"] not in done]
-    root = Path(audio_root or config.DATA_DIR)
+    root = Path(audio_root or config.data_dir())
 
     stats = {
         "condition": condition,

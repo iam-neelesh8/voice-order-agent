@@ -12,8 +12,12 @@ and they all matter for something meant to be forked and run:
   * `audioop`, the stdlib module that used to do mu-law, was removed in
     Python 3.13.
   * ffmpeg output can differ across builds and versions. This is deterministic
-    from a seed on every platform, which is what makes a regenerable test set
-    actually regenerable.
+    on every platform, which is what makes a regenerable test set actually
+    regenerable.
+
+Determinism took a second fix to be real. Piper is stochastic by default --
+VITS samples a duration predictor, so the same sentence twice gave different
+audio and there is no seed to set. See `Speaker._synthesis_config`.
 
 What a phone line does, in order:
 

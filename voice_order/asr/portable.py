@@ -61,7 +61,7 @@ def export_asr_input(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n",
         )
         for row in rows:
-            clip = config.DATA_DIR / row["path"]
+            clip = config.data_dir() / row["path"]
             if not clip.is_file():
                 stats["missing"] += 1
                 continue

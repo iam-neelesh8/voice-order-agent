@@ -55,6 +55,12 @@ def eval_typed_retrieval(
         row["has_disfluency"] = q.has_disfluency
         per_query.append(row)
 
+    if not per_query:
+        raise RuntimeError(
+            f"no queries evaluated for {query_set}/{split} -- the evalset is "
+            "empty or --limit excluded everything"
+        )
+
     latencies.sort()
     return {
         "query_set": query_set,

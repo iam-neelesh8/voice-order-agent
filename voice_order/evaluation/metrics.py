@@ -57,6 +57,12 @@ def aggregate(per_query: list[dict], by: str = "category") -> dict[str, dict]:
     and it is the reason every query carries its own metadata rather than the
     harness inferring it later.
     """
+    if not per_query:
+        raise ValueError(
+            "aggregate() got no results to summarise -- the eval matched zero "
+            "queries. Check the split, the limit, and that the evalset is built."
+        )
+
     groups: dict[str, list[dict]] = {}
     for row in per_query:
         key = str(row.get(by, "all"))

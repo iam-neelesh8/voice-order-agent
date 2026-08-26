@@ -54,7 +54,7 @@ def export_dir() -> Path:
     """
     import os
 
-    return Path(os.environ.get("VOICE_ORDER_EXPORT_DIR") or config.DATA_DIR / "exports")
+    return Path(os.environ.get("VOICE_ORDER_EXPORT_DIR") or config.data_dir() / "exports")
 
 
 def catalog_fingerprint(ids: list[str]) -> str:

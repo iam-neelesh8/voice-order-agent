@@ -62,6 +62,17 @@ def load(name: str) -> Config:
     return Config(name=name, raw=raw)
 
 
+def data_dir() -> Path:
+    """Root for every generated artefact, redirectable as a whole.
+
+    Individual overrides below still win, but this is the one switch that
+    isolates an entire run -- which is what a test needs. Without it, anything
+    writing under data/ reaches straight into a real catalog, audio set or
+    export; that has already caused one silent data loss.
+    """
+    return Path(os.environ.get("VOICE_ORDER_DATA_DIR") or DATA_DIR)
+
+
 def database_path() -> Path:
     """SQLite file, overridable with $VOICE_ORDER_DB.
 
@@ -69,7 +80,7 @@ def database_path() -> Path:
     complete reset, which is the property that makes the eval reproducible for
     someone who just cloned the repo.
     """
-    return Path(os.environ.get("VOICE_ORDER_DB") or DEFAULT_DB)
+    return Path(os.environ.get("VOICE_ORDER_DB") or data_dir() / "voice_order.db")
 
 
 def index_dir() -> Path:
@@ -78,4 +89,4 @@ def index_dir() -> Path:
     Nothing verifies these are in sync with the database -- rebuild them
     whenever the catalog changes. `voice-order db health` reports what exists.
     """
-    return Path(os.environ.get("VOICE_ORDER_INDEX_DIR") or INDEX_DIR)
+    return Path(os.environ.get("VOICE_ORDER_INDEX_DIR") or data_dir() / "index")

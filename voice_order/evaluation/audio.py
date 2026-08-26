@@ -32,7 +32,7 @@ CLEAN_RATE = 16000
 
 
 def audio_root() -> Path:
-    return config.DATA_DIR / "audio" / "synthetic"
+    return config.data_dir() / "audio" / "synthetic"
 
 
 def split_dir(split: str) -> Path:
@@ -56,6 +56,26 @@ def _parse_condition(condition: str) -> tuple[bool, float | None]:
     if condition.startswith("phone_snr"):
         return True, float(condition.removeprefix("phone_snr"))
     raise ValueError(f"unknown condition {condition!r}")
+
+
+BABBLE_POOL_SIZE = 24
+
+
+def _build_babble_pool(rows, speakers, size: int = BABBLE_POOL_SIZE) -> list:
+    """Synthesise a fixed set of clips to use as background speech.
+
+    Always the first `size` queries, always the same voices, regardless of
+    what is already cached on disk. That is the whole point: the pool must not
+    depend on build order, or the noise stops being reproducible.
+    """
+    pool = []
+    for i in range(min(size, len(rows))):
+        audio, rate = speakers[i % len(speakers)].synthesize(rows[i].question)
+        if len(audio) == 0:
+            continue
+        phone, _ = degrade.telephone(audio, rate)
+        pool.append(phone)
+    return pool
 
 
 def build_spoken_set(
@@ -84,10 +104,21 @@ def build_spoken_set(
     for condition in conditions:
         (split_dir(split) / condition).mkdir(parents=True, exist_ok=True)
 
-    # Babble needs other people's speech. A small rotating pool of already
-    # synthesised clips is enough, and using the test set's own voices keeps
-    # the whole thing regenerable from a seed.
-    babble_pool: list[np.ndarray] = []
+    # Babble needs other people's speech, and it must be the SAME speech on
+    # every run. Filling the pool from whatever happened to be synthesised
+    # would make it depend on what was already cached on disk: a resumed build
+    # would skip the early clips, leave the pool short or empty, and quietly
+    # mix different noise than a fresh build produced. Nothing would fail --
+    # the test set would just stop being the reproducible artefact this module
+    # claims it is, and stage 4 numbers from before and after a rebuild would
+    # not be comparable.
+    #
+    # Built lazily, so a run with no noise conditions never pays for it.
+    babble_pool: list[np.ndarray] | None = None
+    needs_babble = "babble" in noise_kinds and any(
+        _parse_condition(c)[1] is not None for c in conditions
+    )
+
     manifest: list[dict] = []
     stats = {"synthesised": 0, "skipped": 0, "clips": 0}
 
@@ -108,8 +139,8 @@ def build_spoken_set(
         stats["synthesised"] += 1
 
         phone, phone_rate = degrade.telephone(audio, rate)
-        if len(babble_pool) < 24:
-            babble_pool.append(phone)
+        if needs_babble and babble_pool is None:
+            babble_pool = _build_babble_pool(rows, speakers)
 
         for condition in conditions:
             degraded, snr = _parse_condition(condition)
@@ -122,7 +153,9 @@ def build_spoken_set(
                 data, out_rate = phone, phone_rate
             else:
                 kind = noise_kinds[int(rng.integers(0, len(noise_kinds)))]
-                noise = degrade.make_noise(kind, len(phone), phone_rate, rng, babble_pool)
+                noise = degrade.make_noise(
+                    kind, len(phone), phone_rate, rng, babble_pool or []
+                )
                 data, out_rate = degrade.mix_at_snr(phone, noise, snr, rng), phone_rate
 
             sf.write(targets[condition], data, out_rate)
@@ -140,7 +173,7 @@ def _manifest_row(query, condition: str, path: Path, voice: str) -> dict:
         "query_id": query.query_id,
         "condition": condition,
         # Relative so the manifest survives being copied to another machine.
-        "path": str(path.relative_to(config.DATA_DIR)).replace("\\", "/"),
+        "path": str(path.relative_to(config.data_dir())).replace("\\", "/"),
         "voice": voice,
         "reference": query.question,
     }
@@ -175,7 +208,7 @@ def describe(split: str) -> dict:
     """Size and duration per condition -- what a GPU trip would have to carry."""
     out: dict[str, dict] = {}
     for row in load_manifest(split):
-        path = config.DATA_DIR / row["path"]
+        path = config.data_dir() / row["path"]
         entry = out.setdefault(row["condition"], {"clips": 0, "mb": 0.0, "seconds": 0.0})
         entry["clips"] += 1
         if path.is_file():

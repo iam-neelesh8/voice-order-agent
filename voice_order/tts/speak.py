@@ -36,6 +36,12 @@ _VOICE_CACHE: dict[str, object] = {}
 
 
 def voices_dir() -> Path:
+    """Deliberately NOT under `config.data_dir()`.
+
+    Voice models are a 60 MB-per-voice download cache, not generated data.
+    Redirecting them with the rest of a run would make an isolated test
+    re-download five voices, which is the opposite of useful.
+    """
     return config.DATA_DIR / "voices"
 
 
@@ -63,10 +69,37 @@ def download_voice(name: str) -> Path:
 class Speaker:
     """One loaded Piper voice. Loading is expensive; keep the instance."""
 
-    def __init__(self, voice: str | None = None) -> None:
+    def __init__(self, voice: str | None = None, deterministic: bool | None = None) -> None:
         cfg = config.load("asr")
         self.name = voice or cfg.get("synthesis.voices", ["en_US-lessac-medium"])[0]
+        if deterministic is None:
+            deterministic = bool(cfg.get("synthesis.deterministic", True))
+        self.deterministic = deterministic
         self._voice = None
+
+    def _synthesis_config(self):
+        """Piper is stochastic by default and there is no seed to set.
+
+        VITS samples from a stochastic duration predictor, so the same text
+        twice gives different audio -- measured here at 99,840 vs 97,792
+        samples for one sentence. Seeding numpy does not help; the sampling
+        happens inside ONNX Runtime.
+
+        Zeroing both noise scales removes the sampling entirely and makes
+        synthesis reproducible. The cost is flatter prosody. That is the right
+        trade for a test set: five voices already supply the speaker variety,
+        and without this the audio is not a regenerable artefact at all --
+        every rebuild would silently produce a different test set, and stage 4
+        numbers taken before and after one would not be comparable.
+
+        Flatter prosody is also slightly *easier* for ASR, so the degradation
+        measured on this set is a lower bound on what a real caller costs.
+        """
+        if not self.deterministic:
+            return None
+        from piper import SynthesisConfig
+
+        return SynthesisConfig(noise_scale=0.0, noise_w_scale=0.0)
 
     def _loaded(self):
         if self._voice is None:
@@ -91,7 +124,7 @@ class Speaker:
         voice = self._loaded()
         chunks = [
             np.frombuffer(chunk.audio_int16_bytes, dtype=np.int16)
-            for chunk in voice.synthesize(text)
+            for chunk in voice.synthesize(text, syn_config=self._synthesis_config())
         ]
         if not chunks:
             return np.zeros(0, dtype=np.float32), self.sample_rate
