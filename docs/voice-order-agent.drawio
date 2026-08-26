@@ -1,0 +1,592 @@
+<mxfile host="app.diagrams.net" version="24.7.17" type="device">
+  <diagram id="pg1" name="1 · Build Order">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2336" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="p1title" value="&lt;b&gt;voice-order-agent — the build order&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Read top to bottom. Each stage ends with a NUMBER, not a feature — if there is no number, the stage is not done.&lt;br&gt;Nothing downstream starts until the upstream number exists, otherwise a regression cannot be attributed to a stage.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="80" y="20" width="960" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p1lega" value="what you build" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="30" width="130" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="p1legb" value="the number it produces" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="30" width="160" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s0" value="&lt;b&gt;STAGE 0 · SCAFFOLD&lt;/b&gt;&amp;nbsp;&amp;nbsp;&lt;font color=&quot;#82B366&quot;&gt;✔ already done&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · repo layout, configs/*.yaml, data/ tree + gitignore rules,&lt;br&gt;package skeleton where every function names the stage it belongs to&lt;br&gt;&lt;b&gt;Needs&lt;/b&gt; · nothing&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order --help" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="110" width="560" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n0" value="&lt;i&gt;No number. Nothing exists to measure yet.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#B3B3B3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="690" y="130" width="330" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d0" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s0" target="n0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s1" value="&lt;b&gt;STAGE 1 · CATALOG INTO POSTGRES&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · stream meta_*.jsonl over HTTP → normalise → products table&lt;br&gt;&lt;b&gt;Key decision&lt;/b&gt; · extract part_numbers at LOAD time, not query time.&lt;br&gt;That is what lets retrieval index identifiers directly.&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order db init&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;voice-order catalog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="260" width="560" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n1" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;100k rows loaded, per-category counts matching&lt;br&gt;configs/catalog.yaml&lt;br&gt;&lt;i&gt;Automotive 40k · Tools 20k · Electronics 20k ·&lt;br&gt;Office 10k · Health 10k&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="270" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s1" target="n1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f01" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s0" target="s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s2" value="&lt;b&gt;STAGE 2 · TYPED RETRIEVAL — THE BASELINE&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · BM25 index + dense embeddings + RRF fusion&lt;br&gt;&lt;b&gt;Test with&lt;/b&gt; · the fitment-rag lookup queries. Their ground truth is&lt;br&gt;already verified, so this is the cheapest possible first number.&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order index all&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;voice-order eval typed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="410" width="560" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;recall@1 / @5 / @20 and MRR, &lt;u&gt;per category&lt;/u&gt;.&lt;br&gt;&lt;br&gt;&lt;b&gt;No audio anywhere in this stage.&lt;/b&gt; This is the ceiling&lt;br&gt;every later stage is measured against." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="420" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s2" target="n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f12" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s1" target="s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3" value="&lt;b&gt;STAGE 3 · ORDER QUERIES&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · seeded generator — quantities, brand + identifier, partial&lt;br&gt;names, disfluencies (&quot;uh, the ... the ceramic brake pads&quot;)&lt;br&gt;&lt;b&gt;Discipline&lt;/b&gt; · the dev / test split is fixed here and never revisited&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order gen-queries --split dev" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="560" width="560" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;The same metrics, now on order phrasing.&lt;br&gt;&lt;br&gt;&lt;b&gt;The gap against stage 2&lt;/b&gt; answers open question #2:&lt;br&gt;do lookup queries transfer, or does only the new set count?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="570" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s3" target="n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f23" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s2" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s4" value="&lt;b&gt;STAGE 4 · SPEECH IN — WHERE THE PROBLEM APPEARS&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · Piper synthesis over 4+ voices → ffmpeg phone codec&lt;br&gt;(8 kHz mono mu-law) → mix MUSAN noise at 20/10/5 dB → faster-whisper n-best&lt;br&gt;&lt;b&gt;Rule&lt;/b&gt; · do NOT fix anything in this stage. Measure the damage first.&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order gen-audio&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;voice-order eval spoken" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="710" width="560" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n4" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;WER clean vs phone, &lt;b&gt;and&lt;/b&gt; recall@k through ASR.&lt;br&gt;&lt;br&gt;&lt;b&gt;The drop from stage 3 is the headline result&lt;/b&gt;&lt;br&gt;of the whole project. Everything after this is a response to it." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="720" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s4" target="n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f34" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s3" target="s4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s5" value="&lt;b&gt;STAGE 5 · ROBUSTNESS — THE FIX&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · (a) spoken-digit normalisation&amp;nbsp;&amp;nbsp;(b) phonetic part-number&lt;br&gt;matching&amp;nbsp;&amp;nbsp;(c) retrieval over the n-best list instead of 1-best&lt;br&gt;&lt;b&gt;Method&lt;/b&gt; · ablate all three separately, or you cannot say which one worked&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order eval spoken --nbest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="860" width="560" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;How much of the stage-4 drop comes back,&lt;br&gt;attributed per component.&lt;br&gt;&lt;br&gt;Sliced by has_part_number — that split is the whole story." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="870" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s5" target="n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f45" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s4" target="s5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f25" value="baseline to beat" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#82B366;strokeWidth=2;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=10;fontColor=#3F7A33;" edge="1" parent="1" source="s2" target="s5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="465" />
+              <mxPoint x="40" y="915" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="s6" value="&lt;b&gt;STAGE 6 · AGENT LOOP&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · intent parse → cart state machine → commit / confirm / clarify&lt;br&gt;policy → orders row written &lt;i&gt;with its full trace&lt;/i&gt;&lt;br&gt;&lt;b&gt;Key&lt;/b&gt; · the confirmation turn converts a low-confidence retrieval into a&lt;br&gt;cheap re-ask instead of a silently wrong order&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order call --audio ...&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;voice-order eval end-to-end" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1010" width="560" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="n6" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;Order accuracy end to end, and turns-per-order.&lt;br&gt;&lt;br&gt;Turns-per-order is the &lt;i&gt;cost&lt;/i&gt; of confirming — a perfectly safe&lt;br&gt;agent that confirms everything is also an unusable one." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="1025" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d6" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s6" target="n6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f56" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s5" target="s6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s7" value="&lt;b&gt;STAGE 7 · SPEECH OUT&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · Piper reply synthesis, barge-in, timing instrumentation on every hop&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order call&amp;nbsp;&amp;nbsp;(live microphone)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1170" width="560" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="n7" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;p50 / p95 latency per turn, broken down&lt;br&gt;ASR / retrieval / TTS." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="1180" width="330" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d7" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s7" target="n7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f67" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s6" target="s7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s8" value="&lt;b&gt;STAGE 8 · REALITY CHECK&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Build&lt;/b&gt; · ~100 human recordings, a spread of accents, some over a real&lt;br&gt;phone line&lt;br&gt;&lt;b&gt;Rule&lt;/b&gt; · never used for tuning. This set only ever reports.&lt;br&gt;&lt;b&gt;CLI&lt;/b&gt; · voice-order eval human" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1310" width="560" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="n8" value="&lt;b&gt;NUMBER&lt;/b&gt;&lt;br&gt;Synthetic-vs-human delta on the stage-5 metrics.&lt;br&gt;&lt;br&gt;&lt;b&gt;If the two disagree, the humans are right&lt;/b&gt; — and the&lt;br&gt;synthetic pipeline is what needs fixing." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="690" y="1320" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="d8" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#999999;endArrow=open;endFill=0;" edge="1" parent="1" source="s8" target="n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f78" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;" edge="1" parent="1" source="s7" target="s8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f85" value="if they disagree,&#10;go back and fix stage 5" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#B85450;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=10;fontColor=#B85450;" edge="1" parent="1" source="s8" target="s5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="665" y="1365" />
+              <mxPoint x="665" y="915" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="rules" value="&lt;b&gt;RULES THAT HOLD IN EVERY STAGE&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;1 · Dev decides, test reports.&lt;/b&gt;&lt;br&gt;Configuration is chosen on dev. Test is run once, at the&lt;br&gt;end of a stage, and is not looked at while deciding&lt;br&gt;anything.&lt;br&gt;&lt;br&gt;&lt;b&gt;2 · Per category, never one average.&lt;/b&gt;&lt;br&gt;Automotive and Health_and_Household are both in the&lt;br&gt;slice precisely because they behave differently. An&lt;br&gt;average hides the only interesting result.&lt;br&gt;&lt;br&gt;&lt;b&gt;3 · Every order stores its trace.&lt;/b&gt;&lt;br&gt;Transcript, n-best, candidates, scores. A wrong order&lt;br&gt;must be attributable to ASR or to retrieval, or the&lt;br&gt;failure is just a shrug.&lt;br&gt;&lt;br&gt;&lt;b&gt;4 · Regenerable data is gitignored.&lt;/b&gt;&lt;br&gt;Ground truth is committed. See data/README.md.&lt;br&gt;&lt;br&gt;&lt;b&gt;5 · No stage starts before the previous number exists.&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="110" width="330" height="430" as="geometry" />
+        </mxCell>
+
+        <mxCell id="onelines" value="&lt;b&gt;THE WHOLE PROJECT IN THREE NUMBERS&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Stage 3&lt;/b&gt; · retrieval when the text is perfect&lt;br&gt;&lt;b&gt;Stage 4&lt;/b&gt; · retrieval when a phone line has mangled it&lt;br&gt;&lt;b&gt;Stage 5&lt;/b&gt; · how much of that you can win back&lt;br&gt;&lt;br&gt;Everything else on this page is plumbing around&lt;br&gt;those three numbers." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=2;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="570" width="330" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why" value="&lt;b&gt;WHY THIS ORDER AND NOT ANOTHER&lt;/b&gt;&lt;br&gt;&lt;br&gt;Stages 4 and 5 are deliberately&lt;br&gt;&lt;b&gt;separate&lt;/b&gt;. If you build the digit&lt;br&gt;normaliser at the same time as the ASR,&lt;br&gt;you never see how bad the problem was,&lt;br&gt;so you can never claim credit for fixing it.&lt;br&gt;&lt;br&gt;Measure the damage. Then repair it.&lt;br&gt;Then say by how much." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="780" width="330" height="190" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="pg2" name="2 · System">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="p2title" value="&lt;b&gt;What the system is&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Two things live in the repo: a runtime that takes a call and writes an order, and an eval harness that decides whether it works.&lt;br&gt;They share the retrieval core and nothing else.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rtbg" value="&lt;b&gt;RUNTIME — one phone call&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9F9F9;strokeColor=#999999;dashed=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="1160" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="mic" value="&lt;b&gt;Caller audio&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;8 kHz mono, narrowband&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="170" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="asr" value="&lt;b&gt;ASR&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;faster-whisper&lt;br&gt;returns 5 hypotheses,&lt;br&gt;never just one&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="270" y="170" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="agt" value="&lt;b&gt;Agent loop&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;intent · cart · confirm policy&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="490" y="170" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tts" value="&lt;b&gt;TTS&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Piper&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="170" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="spk" value="&lt;b&gt;Caller hears reply&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="920" y="170" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="mic" target="asr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="asr" target="agt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="agt" target="tts">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="tts" target="spk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="corebg" value="&lt;b&gt;RETRIEVAL CORE&lt;/b&gt;&amp;nbsp;&amp;nbsp;&lt;font style=&quot;font-size: 10px;&quot;&gt;in-process, over files in data/index/ — shared by the runtime and the eval harness&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9F9F9;strokeColor=#999999;dashed=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="300" y="360" width="600" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="lex" value="&lt;b&gt;BM25&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;bm25s, on disk&lt;br&gt;&lt;i&gt;wins here because&lt;br&gt;identifiers are exact tokens&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="325" y="410" width="160" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="pn" value="&lt;b&gt;Part-number matcher&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;digit-normalised&lt;br&gt;+ phonetic&lt;br&gt;&lt;i&gt;stage 5&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=3;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="510" y="410" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="den" value="&lt;b&gt;Dense&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;embeddings.npy, brute force&lt;br&gt;&lt;i&gt;catches &quot;the ceramic ones&quot;&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="715" y="410" width="160" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fuse" value="&lt;b&gt;Fusion + rerank (RRF)&lt;/b&gt;&amp;nbsp;&amp;nbsp;— over &lt;u&gt;all&lt;/u&gt; ASR hypotheses, weighted by ASR score" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="325" y="550" width="550" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;" edge="1" parent="1" source="lex" target="fuse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;" edge="1" parent="1" source="pn" target="fuse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;" edge="1" parent="1" source="den" target="fuse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="query all&#10;hypotheses" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#6C8EBF;exitX=0.25;exitY=1;exitDx=0;exitDy=0;fontSize=10;" edge="1" parent="1" source="agt" target="corebg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" value="ranked candidates&#10;+ confidence" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#82B366;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;fontSize=10;" edge="1" parent="1" source="fuse" target="agt">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="585" />
+              <mxPoint x="920" y="320" />
+              <mxPoint x="625" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="pgbg" value="&lt;b&gt;SQLite&lt;/b&gt;&amp;nbsp;&amp;nbsp;&lt;font style=&quot;font-size: 10px;&quot;&gt;storage only — it never ranks&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F9F9F9;strokeColor=#999999;dashed=1;align=left;verticalAlign=top;spacingLeft=14;spacingTop=8;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="960" y="360" width="290" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="tprod" value="products&#10;~100k catalog rows" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=8;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="990" y="400" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="temb" value="product_part_numbers&#10;normalised identifiers, indexed" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=8;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="990" y="470" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="tcalls" value="calls&#10;audio path, turns, timings" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=8;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="990" y="540" width="230" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="tcarts" value="carts&#10;in-progress order state" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=8;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="990" y="600" width="230" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="torders" value="orders&#10;+ transcript, n-best, candidates" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=8;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=3;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="990" y="655" width="230" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="q1" value="index build" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#B85450;endArrow=open;endFill=0;fontSize=10;" edge="1" parent="1" source="tprod" target="lex">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="q2" value="index build" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#B85450;endArrow=open;endFill=0;fontSize=10;" edge="1" parent="1" source="temb" target="pn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="q3" value="writes every turn" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#B85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fontSize=10;" edge="1" parent="1" source="agt" target="tcalls">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1290" y="205" />
+              <mxPoint x="1290" y="565" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="claim" value="&lt;b&gt;THE ONE CLAIM THE WHOLE DESIGN TURNS ON&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Speech destroys exactly the tokens retrieval depends on.&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-family: monospace;&quot;&gt;&amp;nbsp;&amp;nbsp;&quot;I need an AC Delco 41-993&quot;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;→ &quot;forty one dash nine ninety three&quot;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;→ &quot;41-99 3&quot;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;→ &quot;4199 3&quot;&lt;/font&gt;&lt;br&gt;&lt;br&gt;A companion study (fitment-rag) measured &lt;i&gt;typed&lt;/i&gt; retrieval on this same corpus and found lexical matching wins &lt;i&gt;because&lt;/i&gt; product identifiers are exact tokens. Speech is precisely what breaks them.&lt;br&gt;&lt;br&gt;So retrieval never sees one string. It sees the whole n-best list, and it matches part numbers on a normalised, phonetic form rather than on characters." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=2;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="240" height="350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="trace" value="&lt;b&gt;THE DATABASE STORES; IT DOES NOT RANK.&lt;/b&gt;&amp;nbsp;&amp;nbsp;Retrieval runs in-process against index files rebuilt from these tables. SQLite FTS5 bm25() and Postgres ts_rank are different rankers — a recall@k that changes with your database is disqualifying. And stage 5 has to ablate three components independently: a constructor flag in Python, a schema migration in SQL.&lt;br&gt;&lt;br&gt;&lt;b&gt;WHY orders CARRIES SO MANY COLUMNS&lt;/b&gt;&amp;nbsp;&amp;nbsp;Every order stores the transcript, the n-best list and the candidates that led to it, so a wrong order is traceable to ASR or to retrieval. Retrofitting that later is how you get unattributable bugs." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;verticalAlign=middle;spacingLeft=16;spacingRight=16;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="700" width="600" height="90" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="pg3" name="3 · One Turn">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="p3title" value="&lt;b&gt;One turn, end to end&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;What happens between the caller finishing a sentence and hearing a reply. Stage 6 builds this; stage 7 makes it live.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="&lt;b&gt;Caller speaks&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&quot;I need two AC Delco 41-993 spark plugs&quot;&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="110" width="340" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_asr" value="&lt;b&gt;1 · ASR&lt;/b&gt;&amp;nbsp;&amp;nbsp;faster-whisper, beam 5&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;returns an n-best list, not a transcript&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="210" width="340" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nbestnote" value="&lt;b&gt;what actually comes back&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-family: monospace; font-size: 10px;&quot;&gt;1&amp;nbsp; &quot;...AC Delco 41-993...&quot;&amp;nbsp;&amp;nbsp;-0.21&lt;br&gt;2&amp;nbsp; &quot;...AC Delco forty one 99 3...&quot;&amp;nbsp;-0.44&lt;br&gt;3&amp;nbsp; &quot;...AC Delco 4199 three...&quot;&amp;nbsp;&amp;nbsp;-0.61&lt;br&gt;4&amp;nbsp; &quot;...a c delco 41 993...&quot;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;-0.72&lt;br&gt;5&amp;nbsp; &quot;...ac dell co 41993...&quot;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;-0.88&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;i&gt;Only #1 is right — and on a real phone line&lt;br&gt;it often is not #1.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="190" width="380" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="e_nb" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#D79B00;endArrow=open;endFill=0;" edge="1" parent="1" source="a_asr" target="nbestnote">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_int" value="&lt;b&gt;2 · Parse intent&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;qty=2&amp;nbsp;·&amp;nbsp;brand=&quot;AC Delco&quot;&amp;nbsp;·&amp;nbsp;part=&quot;41-993&quot;&amp;nbsp;·&amp;nbsp;words=&quot;spark plugs&quot;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="310" width="340" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_ret" value="&lt;b&gt;3 · Retrieve for EVERY hypothesis&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;BM25 + dense + part-number, fused by RRF,&lt;br&gt;each hypothesis weighted by its ASR score&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="410" width="340" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="retnote" value="&lt;b&gt;why this is the trick&lt;/b&gt;&lt;br&gt;&lt;br&gt;The correct product only has to surface for&lt;br&gt;&lt;b&gt;one&lt;/b&gt; hypothesis. A mangled 1-best no longer&lt;br&gt;sinks the turn.&lt;br&gt;&lt;br&gt;With nbest disabled this must reduce exactly&lt;br&gt;to searching the 1-best string — that&lt;br&gt;equivalence is what makes the stage 5&lt;br&gt;ablation trustworthy." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="380" width="380" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="e_rn" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#D6B656;endArrow=open;endFill=0;" edge="1" parent="1" source="a_ret" target="retnote">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dec" value="&lt;b&gt;4 · How confident?&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;score &lt;i&gt;and&lt;/i&gt; margin over runner-up&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="250" y="530" width="320" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="commit" value="&lt;b&gt;COMMIT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;add to cart, keep going&lt;br&gt;&quot;Added two. Anything else?&quot;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="confirm" value="&lt;b&gt;CONFIRM&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;read back brand + identifier&lt;br&gt;&quot;Did you mean the AC Delco&lt;br&gt;41-993 spark plug?&quot;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="290" y="720" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="reask" value="&lt;b&gt;RE-ASK&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&quot;Sorry — could you read me&lt;br&gt;the part number again?&quot;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="580" y="720" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ed1" value="high score&#10;+ clear margin" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#82B366;exitX=0;exitY=0.5;exitDx=0;exitDy=0;fontSize=10;fontColor=#3F7A33;" edge="1" parent="1" source="dec" target="commit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed2" value="middling, OR two&#10;candidates too close" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#D79B00;exitX=0.5;exitY=1;exitDx=0;exitDy=0;fontSize=10;fontColor=#996600;" edge="1" parent="1" source="dec" target="confirm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed3" value="nothing&#10;plausible" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#B85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fontSize=10;fontColor=#B85450;" edge="1" parent="1" source="dec" target="reask">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="yn" value="&lt;b&gt;caller says yes?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="850" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ey" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;" edge="1" parent="1" source="confirm" target="yn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eyes" value="yes" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#82B366;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=10;fontColor=#3F7A33;" edge="1" parent="1" source="yn" target="commit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="895" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eno" value="no / unclear" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#B85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=10;fontColor=#B85450;" edge="1" parent="1" source="yn" target="reask">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="690" y="895" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="say" value="&lt;b&gt;5 · TTS the reply&lt;/b&gt;&amp;nbsp;&amp;nbsp;Piper → caller" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="990" width="340" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="es1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="commit" target="say">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="965" />
+              <mxPoint x="410" y="965" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="es2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="reask" target="say">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="690" y="965" />
+              <mxPoint x="410" y="965" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="loop" value="next turn" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#9673A6;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=10;fontColor=#7A5C99;" edge="1" parent="1" source="say" target="a_asr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="1017" />
+              <mxPoint x="200" y="240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="tracenote" value="&lt;b&gt;EVERY TURN WRITES A TRACE&lt;/b&gt;&lt;br&gt;&lt;br&gt;transcript · all 5 hypotheses · every retrieved&lt;br&gt;candidate with its component scores · which&lt;br&gt;branch was taken · timings per hop&lt;br&gt;&lt;br&gt;&lt;i&gt;This is what makes a wrong order attributable&lt;br&gt;to ASR or to retrieval, rather than a shrug.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="580" width="380" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="polnote" value="&lt;b&gt;THE CONFIRMATION TURN IS NOT POLITENESS&lt;/b&gt;&lt;br&gt;&lt;br&gt;It is the mechanism that converts a low-confidence retrieval into &lt;b&gt;either a correct order or a cheap re-ask&lt;/b&gt;, instead of a silently wrong one.&lt;br&gt;&lt;br&gt;Note the second trigger on the diamond: even at high absolute confidence, two candidates within 0.10 of each other force a confirmation. Two plausible part numbers is exactly the dangerous case.&lt;br&gt;&lt;br&gt;Thresholds live in configs/agent.yaml — they are the dial between &quot;safe&quot; and &quot;usable&quot;, and stage 6 measures both ends: order accuracy &lt;i&gt;and&lt;/i&gt; turns-per-order." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=2;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="740" width="380" height="270" as="geometry" />
+        </mxCell>
+
+        <mxCell id="es" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="start" target="a_asr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="a_asr" target="a_int">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="a_int" target="a_ret">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es5" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="a_ret" target="dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="pg4" name="4 · Data Pipeline">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="p4title" value="&lt;b&gt;Where the data comes from&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Four datasets, different purposes, different lifetimes. Only the first is a real dependency — the rest are generated.&lt;br&gt;The rule for git: regenerable → ignored, ground truth → committed.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" value="gitignored — regenerable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;dashed=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="30" width="180" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" value="committed — ground truth" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="30" width="180" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lane1" value="&lt;b&gt;1&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;dashed=1;align=left;verticalAlign=top;spacingLeft=8;fontSize=16;fontColor=#AAAAAA;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="1470" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="hf" value="&lt;b&gt;Amazon Reviews 2023&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;McAuley Lab, UC San Diego&lt;br&gt;item metadata only&lt;br&gt;~48M items, 33 categories&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="140" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="slice" value="&lt;b&gt;stream + cap&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;raw JSONL over HTTP&lt;br&gt;&lt;i&gt;(datasets dropped script&lt;br&gt;loaders in 4.x)&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="140" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="mixnote" value="&lt;b&gt;the slice is deliberate&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Automotive 40k — part numbers, the hard case&lt;br&gt;Tools 20k — model numbers, sizes&lt;br&gt;Electronics 20k — high name collision&lt;br&gt;Office 10k — mundane reorders&lt;br&gt;Health 10k — plain names, &lt;i&gt;no identifiers&lt;/i&gt;, the easy case&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;align=left;verticalAlign=top;spacingLeft=12;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="550" y="130" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="prod" value="&lt;b&gt;products&lt;/b&gt;&amp;nbsp;(SQLite, one file)&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;~100k rows + product_part_numbers&lt;br&gt;identifiers extracted at load time&lt;/font&gt;" style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=10;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="950" y="140" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="dl" value="data/catalog/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;dashed=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="335" y="245" width="150" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="w1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="hf" target="slice">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w2" value="normalise" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;fontSize=10;" edge="1" parent="1" source="slice" target="prod">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="185" />
+              <mxPoint x="720" y="260" />
+              <mxPoint x="920" y="260" />
+              <mxPoint x="920" y="185" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="lane2" value="&lt;b&gt;2&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;dashed=1;align=left;verticalAlign=top;spacingLeft=8;fontSize=16;fontColor=#AAAAAA;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="1470" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="gen" value="&lt;b&gt;seeded query generator&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;templates filled from catalog fields&lt;br&gt;quantities · brand + identifier&lt;br&gt;partial names · disfluencies&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="320" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="examples" value="&lt;font style=&quot;font-size: 11px; font-family: monospace;&quot;&gt;&quot;I need two AC Delco 41-993 spark plugs&quot;&lt;br&gt;&quot;Can you get me a Bosch oil filter for a 2012 Civic&quot;&lt;br&gt;&quot;Uh, the ... the brake pads, the ceramic ones&quot;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;align=left;verticalAlign=middle;spacingLeft=12;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="610" y="325" width="380" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="evalset" value="&lt;b&gt;data/evalsets/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;dev.jsonl&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;test.jsonl&lt;br&gt;query_id · question · relevant_doc_ids&lt;br&gt;&lt;b&gt;the answer is known for every query&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="320" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fitment" value="&lt;b&gt;fitment-rag lookup queries&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;2,000 items, ground truth&lt;br&gt;already verified — reused as-is&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="70" y="325" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="w3" value="generate from&#10;the catalog" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#B85450;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=10;" edge="1" parent="1" source="prod" target="gen">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1065" y="275" />
+              <mxPoint x="440" y="275" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="w4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="gen" target="evalset">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1010" y="365" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="w5" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#82B366;strokeWidth=2;" edge="1" parent="1" source="fitment" target="evalset">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="295" y="430" />
+              <mxPoint x="1180" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="lane3" value="&lt;b&gt;3&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;dashed=1;align=left;verticalAlign=top;spacingLeft=8;fontSize=16;fontColor=#AAAAAA;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="1470" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="piper" value="&lt;b&gt;Piper TTS&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;4+ voices, CPU,&lt;br&gt;faster than realtime&lt;br&gt;&lt;i&gt;one voice would measure&lt;br&gt;the speaker, not the ASR&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="510" width="200" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="clean" value="&lt;b&gt;clean.wav&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;16 kHz&lt;br&gt;&lt;i&gt;kept — the clean-vs-phone&lt;br&gt;gap is itself a result&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;dashed=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="515" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="phone" value="&lt;b&gt;phone codec&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 9px; font-family: monospace;&quot;&gt;ffmpeg -ar 8000 -ac 1&lt;br&gt;-c:a pcm_mulaw&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="570" y="515" width="190" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="musan" value="&lt;b&gt;MUSAN noise&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;subset, mixed at&lt;br&gt;SNR 20 / 10 / 5 dB&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="820" y="515" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="synth" value="&lt;b&gt;data/audio/synthetic/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;~2,000 clips × conditions&lt;br&gt;~50 MB after the codec&lt;br&gt;&lt;i&gt;gitignored — rebuilds from a seed&lt;br&gt;in under an hour&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;dashed=1;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="510" width="250" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="w6" value="speak every query" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#82B366;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=10;" edge="1" parent="1" source="evalset" target="piper">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="20" y="365" />
+              <mxPoint x="20" y="470" />
+              <mxPoint x="170" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="w7" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="piper" target="clean">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w8" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="clean" target="phone">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w9" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="phone" target="musan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w10" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="musan" target="synth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lane4" value="&lt;b&gt;4&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;dashed=1;align=left;verticalAlign=top;spacingLeft=8;fontSize=16;fontColor=#AAAAAA;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="1470" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="human" value="&lt;b&gt;data/audio/human/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;~100 utterances, real people,&lt;br&gt;spread of accents, some over&lt;br&gt;an actual phone call&lt;br&gt;&lt;br&gt;&lt;b&gt;committed&lt;/b&gt; — small enough&lt;br&gt;&lt;b&gt;never used for tuning&lt;/b&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="720" width="240" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="whis" value="&lt;b&gt;faster-whisper&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;n-best, 5 hypotheses&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="745" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="corev" value="&lt;b&gt;retrieval core&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;the same code the runtime uses&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="670" y="745" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="metrics" value="&lt;b&gt;metrics&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;WER · recall@k · MRR&lt;br&gt;&lt;b&gt;always per category&lt;/b&gt;&lt;br&gt;also sliced by has_part_number&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="940" y="745" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="compare" value="&lt;b&gt;COMPARE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;synthetic 2,000&amp;nbsp;&amp;nbsp;vs&amp;nbsp;&amp;nbsp;human 100&lt;br&gt;&lt;br&gt;&lt;b&gt;If they disagree,&lt;br&gt;the humans are right&lt;/b&gt; — and the&lt;br&gt;synthetic pipeline is what needs fixing.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=3;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="730" width="270" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="w11" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#999999;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="synth" target="whis">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1185" y="700" />
+              <mxPoint x="500" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="w12" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#82B366;" edge="1" parent="1" source="human" target="whis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w13" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="whis" target="corev">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w14" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#333333;" edge="1" parent="1" source="corev" target="metrics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="w15" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;strokeColor=#B85450;" edge="1" parent="1" source="metrics" target="compare">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gtnote" value="&lt;b&gt;WHY GENERATE INSTEAD OF COLLECT&lt;/b&gt;&amp;nbsp;&amp;nbsp;The evaluation depends on knowing which product &lt;i&gt;should&lt;/i&gt; have been found. Collected queries have no answer key. Generated ones do — deterministically, from a seed, one product per query. Speaking them with TTS then carries that answer key straight into audio, for free.&lt;br&gt;&lt;br&gt;&lt;b&gt;WHY DEGRADE&lt;/b&gt;&amp;nbsp;&amp;nbsp;Clean TTS audio is nothing like a phone call. Skipping the codec and the noise produces numbers that will not survive contact with a real caller.&lt;br&gt;&lt;br&gt;&lt;b&gt;SPLIT DISCIPLINE&lt;/b&gt;&amp;nbsp;&amp;nbsp;dev and test are fixed and separate. Every configuration choice is made on dev. Every number that gets published comes from test, which is not looked at while deciding anything." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;align=left;verticalAlign=top;spacingLeft=16;spacingRight=16;spacingTop=12;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="890" width="1420" height="100" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

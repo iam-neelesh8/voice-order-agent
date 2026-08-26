@@ -1,0 +1,25 @@
+# Stage 6 — the dialogue loop.
+
+confidence:
+  # Above -> commit silently. Between -> confirm. Below -> ask again.
+  commit_threshold: 0.85
+  confirm_threshold: 0.45
+  # If the top two candidates are this close, confirm regardless of score.
+  margin_requires_confirm: 0.10
+
+dialogue:
+  max_turns_per_item: 3
+  max_items_per_call: 20
+  # Read back brand + identifier, not the full title — titles are unspeakable.
+  readback_template: "{store} {part_number}, {short_title}"
+
+tts:
+  engine: piper
+  voice: en_US-lessac-medium
+  sample_rate: 22050
+
+trace:
+  # Non-negotiable: every order stores what produced it.
+  store_transcript: true
+  store_nbest: true
+  store_candidates: 20

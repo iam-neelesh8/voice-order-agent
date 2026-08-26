@@ -1,0 +1,43 @@
+# Stages 2 and 5 -- the retrieval core.
+#
+# Every retriever here runs in-process against files under data/index/.
+# Nothing queries the database at search time. See voice_order/db/schema.sql
+# for why.
+
+lexical:
+  backend: bm25s           # in-process BM25; identical scores on every machine
+  k1: 1.2
+  b: 0.75
+  top_k: 50
+
+dense:
+  model: BAAI/bge-small-en-v1.5
+  dim: 384
+  # Brute-force cosine over one numpy array. 100k x 384 float32 is ~150 MB;
+  # a full scan is a single matmul. Add an ANN index at ~1M vectors, not here.
+  backend: numpy
+  normalise: true          # store L2-normalised so cosine is a dot product
+  top_k: 50
+  batch_size: 64
+
+part_number:
+  # Stage 5. Off for the stage 2/4 baseline, then each piece enabled
+  # separately so the ablation can attribute the win.
+  enabled: false
+  normalise_spoken_digits: true   # "forty one dash nine ninety three" -> 41-993
+  strip_separators: true          # 41-993 == 41 993, but AC41993 stays distinct
+  phonetic: metaphone             # metaphone | soundex | none
+  max_edit_distance: 1
+
+fusion:
+  method: rrf              # reciprocal rank fusion -- scores are not comparable
+  rrf_k: 60
+  weights: {lexical: 1.0, dense: 1.0, part_number: 1.5}
+  top_k: 20
+
+nbest:
+  # Stage 5. Retrieve over every ASR hypothesis, not just the top one.
+  # With this off, search_transcript must reduce exactly to searching 1-best.
+  enabled: false
+  max_hypotheses: 5
+  weight_by_asr_score: true

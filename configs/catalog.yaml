@@ -1,0 +1,28 @@
+# Stage 1 — which slice of Amazon Reviews 2023 becomes the catalog.
+#
+# The mix is deliberate: categories where identifiers carry the signal
+# (Automotive) and categories where they do not (Health_and_Household),
+# so results are reported per category, never as one average.
+
+source:
+  repo: McAuley-Lab/Amazon-Reviews-2023
+  # Raw JSONL over HTTP — `datasets` dropped script loaders in 4.x.
+  url_template: "https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023/resolve/main/raw/meta_categories/meta_{category}.jsonl"
+
+categories:
+  - {name: Automotive,                 limit: 40000}
+  - {name: Tools_and_Home_Improvement, limit: 20000}
+  - {name: Electronics,                limit: 20000}
+  - {name: Office_Products,            limit: 10000}
+  - {name: Health_and_Household,       limit: 10000}
+
+# Fields kept per item. Everything else is dropped at normalise time.
+fields:
+  id: parent_asin
+  keep: [title, price, average_rating, store, categories, details, features]
+
+# Items missing any of these are skipped — they cannot be ordered or scored.
+require: [parent_asin, title]
+
+download_dir: data/catalog
+seed: 20260826

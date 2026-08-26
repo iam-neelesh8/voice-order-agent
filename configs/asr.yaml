@@ -1,0 +1,36 @@
+# Stage 4 — speech in.
+
+model:
+  name: small.en           # faster-whisper size
+  device: cpu              # cpu | cuda
+  compute_type: int8
+
+decode:
+  beam_size: 5
+  # n-best is the whole point — one transcript is not enough for part numbers.
+  n_best: 5
+  temperature: 0.0
+  vad_filter: true
+  language: en
+
+# Stage 4 — how the spoken test set is built.
+synthesis:
+  engine: piper
+  voices:                  # 4+, or this measures one speaker, not the ASR
+    - en_US-lessac-medium
+    - en_US-amy-medium
+    - en_GB-alan-medium
+    - en_US-ryan-high
+  sample_rate: 16000
+  out_dir: data/audio/synthetic
+
+degradation:
+  # Narrowband phone codec. Clean audio is kept too — the gap is a result.
+  phone:
+    sample_rate: 8000
+    codec: pcm_mulaw
+    channels: 1
+  noise:
+    corpus: data/noise      # MUSAN subset
+    snr_db: [20, 10, 5]
+  seed: 20260826

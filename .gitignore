@@ -216,3 +216,41 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------------------
+# voice-order-agent data
+#
+# Rule: anything that can be regenerated from a seed or re-downloaded is
+# ignored. Anything that is ground truth, or too small/too human to
+# regenerate, is committed. See data/README.md.
+# ---------------------------------------------------------------------------
+
+# 1. Catalog — streamed from HuggingFace, ~100k items. Re-downloadable.
+data/catalog/*
+!data/catalog/.gitkeep
+
+# 3. Synthetic audio — TTS + phone degradation, regenerates from a seed.
+data/audio/synthetic/*
+!data/audio/synthetic/.gitkeep
+
+# MUSAN noise subset — ~GBs, re-downloadable.
+data/noise/*
+!data/noise/.gitkeep
+
+# Derived indexes -- rebuilt from the database by `voice-order index all`
+data/index/
+*.npy
+
+# SQLite database -- rebuilt by `voice-order catalog`
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Committed on purpose (belt and braces — these are ground truth):
+!data/evalsets/**
+!data/audio/human/**
+
+# Local secrets / connection strings
+.env
+.env.*
+!.env.example
