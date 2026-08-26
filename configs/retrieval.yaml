@@ -18,7 +18,12 @@ dense:
   backend: numpy
   normalise: true          # store L2-normalised so cosine is a dot product
   top_k: 50
-  batch_size: 64
+  batch_size: 128
+  # ONNX Runtime intra-op threads. null = library default, which measured
+  # slower than setting it explicitly. Embedding 100k titles is ~3 hours on a
+  # 14-core laptop and about a minute on a T4 -- this is the one step in the
+  # project actually worth borrowing a GPU for.
+  threads: 14
 
 part_number:
   # Stage 5. Off for the stage 2/4 baseline, then each piece enabled
