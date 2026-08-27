@@ -184,9 +184,33 @@ from 0.919 to 0.180 -- it loses more than the vague rungs ever had.
 That is the project's premise, measured, and it makes stage 5 the product
 rather than a refinement.
 
-Caveats: `small.en`, 1-best. The `large-v3` comparison is unrun and is now the
-most valuable outstanding experiment. n-best fusion is also unmeasured, and on
-an 84% WER the headroom could be large.
+**A bigger model does not fix it.** `large-v3` against `small.en`, same audio,
+same 1-best comparison:
+
+| | WER | recall@1 | identifier WER |
+|---|---|---|---|
+| typed | -- | 0.576 | -- |
+| small.en, phone | 0.495 | 0.212 | 0.842 |
+| large-v3, phone | 0.326 | **0.241** | 0.535 |
+
+`large-v3` recovers **2.9 points of a 36-point drop** -- 8% of the damage, for
+6x the parameters and 4.4 GPU-hours. It genuinely transcribes better, cutting
+identifier WER from 84% to 54%, and recall still barely moves: 0.226 to 0.274
+against a typed 0.779.
+
+That is the whole result. **Halving the error rate on an identifier buys almost
+nothing**, because a part number is either exactly right or it is useless.
+`41-993` heard as `41-99 3` is as unfindable as `forty one ninety three`. There
+is no partial credit in an exact-match lookup -- which is the same reason BM25
+wins here and dense scored 0.006.
+
+So the robustness has to live in retrieval. Stage 5 is the product.
+
+Odd result worth keeping: `large-v3` transcribes the *degraded* audio better
+than the clean (WER 0.326 vs 0.355). Most likely the 8 kHz band-pass strips
+high-frequency TTS artefacts the model finds confusing, but that is a guess.
+
+Caveat: 1-best throughout.
 
 ## Open questions
 
