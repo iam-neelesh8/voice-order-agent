@@ -7,9 +7,15 @@
 #   Kaggle : Add Data -> Upload -> asr_dev.zip. Settings -> Accelerator: GPU.
 #   Colab  : run the cell; it will prompt you to upload.
 #
-# Measured on the laptop this was built on: ~80 min per condition for 1-best
-# with small.en, ~6.75 h for the five-condition matrix, ~34 h with the n-best
-# sweep. On a T4 the whole matrix is well under an hour.
+# MEASURED ON A KAGGLE T4, 1,998 clips per condition:
+#
+#   small.en, N_BEST=5   ~55 min per condition   ~4.6 h for all five
+#   large-v3, N_BEST=5   roughly 3-4x that       ~15 h for all five
+#
+# Both models across all five conditions is about 20 hours, and a Kaggle
+# session is capped at 12. Start with the defaults below -- clean and phone
+# at 1-best is the stage 4 headline number and takes about 20 minutes.
+# Widen only once you have that.
 #
 # MODELS is the experiment. Running more than one size answers the question
 # that actually matters: does a bigger model fix phone audio, or does the
@@ -45,9 +51,13 @@ print(f"CUDA devices: {ctranslate2.get_cuda_device_count()}", flush=True)
 
 # --- what to run -------------------------------------------------------------
 
-MODELS = ["small.en", "large-v3"]        # add "medium.en" for a third point
-CONDITIONS = None                         # None = every condition in the bundle
-N_BEST = 5                                # 1 is ~5x faster and enough for stage 4
+# Defaults chosen to finish. Each of these multiplies the runtime:
+#   every extra model      ~1x (large-v3 is ~3-4x small.en on its own)
+#   every extra condition  ~1x
+#   every extra n-best     ~1x  (N_BEST=5 is five decodes per clip)
+MODELS = ["small.en"]                     # add "large-v3" for the size comparison
+CONDITIONS = ["clean", "phone"]           # None = all five; the drop lives in these two
+N_BEST = 1                                # stage 4 needs 1-best; stage 5 consumes the rest
 
 # --- locate and unpack the bundle -------------------------------------------
 
@@ -195,6 +205,14 @@ for model_name in MODELS:
                     print(f"  {condition}: {i:,}/{len(todo):,}  "
                           f"({rate:.1f}/s, ~{(len(todo)-i)/rate/60:.0f} min left)", flush=True)
         print(f"  {condition}: {len(rows):,} clips in {time.time()-started:.0f}s", flush=True)
+
+        # Re-zip after every condition. A run that gets stopped or reclaimed
+        # part way still leaves a downloadable archive -- zipping only at the
+        # very end means an interrupted four-hour run hands back nothing.
+        os.system("zip -qr transcripts.zip transcripts")
+        print(f"  transcripts.zip updated "
+              f"({os.path.getsize('transcripts.zip')/1e6:.0f} MB) -- safe to "
+              f"download and stop here", flush=True)
 
     del model
 
