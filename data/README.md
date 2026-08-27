@@ -140,6 +140,54 @@ humans are right.
 
 ---
 
+## Results so far
+
+**Stage 2 -- does dense retrieval earn its place? No.** Measured on the dev
+order set, 2,000 queries against all 100k documents:
+
+| retriever | recall@1 | recall@20 |
+|---|---|---|
+| BM25 | **0.576** | 0.823 |
+| dense (bge-small) | 0.282 | 0.538 |
+| both, fused with RRF | 0.492 | 0.814 |
+
+Fusing costs 8.4 points. Dense scores **0.006** on bare part numbers -- an
+embedding maps `41-993` into a neighbourhood of similar digit strings and has
+no way to represent "this exact token". Because RRF is rank-based, a retriever
+that is near-random on identifier queries drags the whole ranking down: it
+pulls `brand_id` from 0.919 to 0.601. Dense helps only on the two vaguest
+rungs (+0.04, +0.02), which are the rungs where the agent should be asking a
+question rather than guessing harder. Lexical-only is the default.
+
+**Stage 4 -- speech, not the phone line, is what breaks this.**
+
+| condition | WER | recall@1 |
+|---|---|---|
+| typed, no audio | -- | 0.576 |
+| clean speech | 0.451 | 0.223 |
+| phone line | 0.495 | 0.212 |
+
+The drop is 0.364, and **0.353 of it happens before the codec is applied**.
+The plan assumed the phone line was the problem; it costs about one point.
+
+The damage is concentrated exactly where the value was:
+
+| | typed | phone | WER |
+|---|---|---|---|
+| query has an identifier | 0.779 | 0.226 | **0.842** |
+| query has none | 0.373 | 0.197 | 0.148 |
+
+Word error rate is **84% on queries containing a part number against 15%
+without**. Identifiers went from a 2x advantage to worthless. `brand_id` falls
+from 0.919 to 0.180 -- it loses more than the vague rungs ever had.
+
+That is the project's premise, measured, and it makes stage 5 the product
+rather than a refinement.
+
+Caveats: `small.en`, 1-best. The `large-v3` comparison is unrun and is now the
+most valuable outstanding experiment. n-best fusion is also unmeasured, and on
+an 84% WER the headroom could be large.
+
 ## Open questions
 
 - How many categories before per-category results stop being meaningful?

@@ -11,6 +11,11 @@ lexical:
   top_k: 50
 
 dense:
+  # MEASURED, do not re-enable on intuition: fusing dense with BM25 costs 8.4
+  # points of recall@1 on the dev order set (0.576 -> 0.492). Dense scores
+  # 0.006 on bare part numbers, and RRF being rank-based means a retriever
+  # that is near-random on identifier queries drags the fused ranking down.
+  # It helps only on the two vaguest rungs. See data/README.md.
   model: BAAI/bge-small-en-v1.5
   dim: 384
   # Brute-force cosine over one numpy array. 100k x 384 float32 is ~150 MB;
