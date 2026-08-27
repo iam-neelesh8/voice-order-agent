@@ -86,6 +86,10 @@ def build_parser() -> argparse.ArgumentParser:
                      help="skip the model-match check (not recommended)")
 
     # stages 6-7
+    web = sub.add_parser("serve", help="stage 6 - a local demo page you can watch")
+    web.add_argument("--port", type=int, default=8000)
+    web.add_argument("--host", default="127.0.0.1")
+
     chk = sub.add_parser("check-model",
                          help="stage 6 - can this model actually drive the agent?")
     chk.add_argument("--model", help="override configs/agent.yaml for this run")
@@ -298,6 +302,13 @@ def _cmd_import_embeddings(args) -> int:
     return 0
 
 
+def _cmd_serve(args) -> int:
+    from voice_order.web import serve
+
+    serve(host=args.host, port=args.port)
+    return 0
+
+
 def _cmd_check_model(args) -> int:
     from voice_order.agent import check
 
@@ -361,6 +372,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_call(args)
     if args.command == "check-model":
         return _cmd_check_model(args)
+    if args.command == "serve":
+        return _cmd_serve(args)
 
     raise NotImplementedError(
         f"{args.command}: not built yet -- see docs/ARCHITECTURE.md for the stage it belongs to"

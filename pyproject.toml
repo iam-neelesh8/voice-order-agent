@@ -68,5 +68,10 @@ ignore = [
     "SIM117",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# web.py embeds a page as a string literal. Wrapping CSS selectors and JS to
+# fit a Python line limit makes them harder to read, not easier.
+"voice_order/web.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

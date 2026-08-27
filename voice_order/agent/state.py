@@ -204,9 +204,18 @@ class OrderSession:
             "total": total,
         }
         if unpriced:
+            # Do not hand back a bare "total: 0" for an order that is mostly
+            # unpriced -- 42% of the catalog has no price, and a model given a
+            # number will read it out. A caller told "your total is $0" has
+            # been told something false about their own order.
+            out["total_is_partial"] = True
+            out["priced_items"] = len(priced)
+            out["unpriced_items"] = unpriced
             out["note"] = (
-                f"{unpriced} item(s) have no price in the catalog and are not in "
-                "the total. Tell the caller you will confirm those separately."
+                f"{unpriced} of {len(self.lines)} item(s) have no price on file. "
+                f"The {total} figure covers only the {len(priced)} priced one(s). "
+                "DO NOT read this out as the order total. Tell the caller you "
+                "will confirm the price on the others and call them back."
             )
         return out
 

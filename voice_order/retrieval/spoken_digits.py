@@ -192,7 +192,19 @@ def candidates(text: str, min_length: int = 4, max_length: int = 20) -> list[str
                     add("".join(run[start:stop]))
         run = []
 
-    # 4. A letter prefix attached to the following number: "P 0420" -> "P0420",
+    # 4. The quantity glued to the front of the identifier. ASR writes "a
+    #    CAT6A" as "1C-AT6A" and "one W-21411" as "1W-21411", so the leading
+    #    digit is the article, not part of the code. Measured on the dev
+    #    transcripts, this pattern was half of all near-misses.
+    #
+    #    Both readings are kept rather than choosing: "110WCB" is a real code
+    #    beginning with 1 as often as it is "1" plus "10WCB", and the index is
+    #    a better judge of which exists than a rule here would be.
+    for value in list(found):
+        if len(value) > min_length and value[0].isdigit():
+            add(value[1:])
+
+    # 5. A letter prefix attached to the following number: "P 0420" -> "P0420",
     #    which is how ASR often splits an alphanumeric code.
     tokens = _tokens(text)
     for i, token in enumerate(tokens[:-1]):

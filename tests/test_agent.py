@@ -359,3 +359,28 @@ def test_an_order_can_be_placed_from_a_session_nobody_registered(tmp_path, monke
 
     assert result["ok"] is True
     assert repository.orders_for_call(s.call_id)[0]["quantity"] == 2
+
+
+def test_a_mostly_unpriced_cart_is_not_quoted_as_a_total():
+    """42% of the catalog has no price, and a model handed a number reads it
+    out. "Your total is $0" is a false statement about the caller's order."""
+    s = OrderSession()
+    s._retriever = StubRetriever([candidate(product(price=None), 24.0)])
+    s.search("spark plug")
+    tool_defs.execute("add_to_cart", {"product_id": "B001"}, s)
+
+    cart = tool_defs.execute("read_cart", {}, s)
+
+    assert cart["total_is_partial"] is True
+    assert cart["unpriced_items"] == 1
+    assert "DO NOT read this out as the order total" in cart["note"]
+
+
+def test_a_fully_priced_cart_has_no_partial_flag(session):
+    session.search("spark plug")
+    tool_defs.execute("add_to_cart", {"product_id": "B001", "quantity": 2}, session)
+
+    cart = tool_defs.execute("read_cart", {}, session)
+
+    assert "total_is_partial" not in cart
+    assert cart["total"] == pytest.approx(17.98)
