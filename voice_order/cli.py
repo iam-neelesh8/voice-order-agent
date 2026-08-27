@@ -86,6 +86,10 @@ def build_parser() -> argparse.ArgumentParser:
                      help="skip the model-match check (not recommended)")
 
     # stages 6-7
+    chk = sub.add_parser("check-model",
+                         help="stage 6 - can this model actually drive the agent?")
+    chk.add_argument("--model", help="override configs/agent.yaml for this run")
+
     call = sub.add_parser("call", help="stage 6/7 - take an order")
     call.add_argument("--text", action="store_true",
                       help="type at it instead of speaking (stage 6)")
@@ -294,6 +298,14 @@ def _cmd_import_embeddings(args) -> int:
     return 0
 
 
+def _cmd_check_model(args) -> int:
+    from voice_order.agent import check
+
+    result = check.run(model=args.model)
+    check.report(result)
+    return 0 if result.passed == result.total else 1
+
+
 def _cmd_call(args) -> int:
     from voice_order.agent.loop import OrderAgent
 
@@ -347,6 +359,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_query(args)
     if args.command == "call":
         return _cmd_call(args)
+    if args.command == "check-model":
+        return _cmd_check_model(args)
 
     raise NotImplementedError(
         f"{args.command}: not built yet -- see docs/ARCHITECTURE.md for the stage it belongs to"

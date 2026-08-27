@@ -231,6 +231,12 @@ class OrderSession:
 
         from voice_order.db import repository
 
+        # The session may never have been registered -- `check-model` and any
+        # embedding of the agent build one directly. orders.call_id is a
+        # foreign key, so without this the write fails on a constraint rather
+        # than saying anything useful.
+        repository.ensure_call(self.call_id)
+
         order_ids = []
         for line in self.lines:
             order_ids.append(

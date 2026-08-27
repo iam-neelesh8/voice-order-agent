@@ -323,3 +323,38 @@ def test_adding_returns_the_cart_without_counting_as_reading_it(session):
 
     assert "total" in result                       # the model still sees it
     assert session._total_read_since_change is False
+
+
+def test_an_order_can_be_placed_from_a_session_nobody_registered(tmp_path, monkeypatch):
+    """Regression: orders.call_id is a foreign key.
+
+    A session built directly -- by `check-model`, or by anything embedding the
+    agent -- has a call_id with no row behind it, and place_order failed with a
+    bare IntegrityError instead of working or explaining itself.
+    """
+    monkeypatch.setenv("VOICE_ORDER_DATA_DIR", str(tmp_path))
+    from voice_order.db import repository, session as db
+
+    db.init_schema()
+    repository.upsert_products(
+        [
+            Product(
+                parent_asin="B001",
+                title="ACDelco 41-993 Spark Plug",
+                category="Automotive",
+                store="ACDelco",
+                price=8.99,
+            )
+        ]
+    )
+
+    s = OrderSession()                      # never went through open_call
+    s._retriever = StubRetriever([candidate(product(), 24.0)])
+    s.search("spark plug")
+    tool_defs.execute("add_to_cart", {"product_id": "B001", "quantity": 2}, s)
+    tool_defs.execute("read_cart", {}, s)
+
+    result = tool_defs.execute("place_order", {}, s)
+
+    assert result["ok"] is True
+    assert repository.orders_for_call(s.call_id)[0]["quantity"] == 2

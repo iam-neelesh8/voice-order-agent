@@ -238,6 +238,24 @@ def open_call(audio_path: str | None = None, asr_model: str | None = None) -> st
     return call_id
 
 
+def ensure_call(call_id: str) -> str:
+    """Register a call row if one does not exist yet.
+
+    `orders.call_id` is a foreign key, so writing an order for a session that
+    was never registered fails with a bare IntegrityError -- which is what
+    happened the first time the agent was driven from anywhere other than
+    OrderAgent. A session *is* a call; if nobody registered it, register it
+    now rather than making every caller remember to.
+    """
+    with connect() as conn:
+        exists = conn.execute(
+            "SELECT 1 FROM calls WHERE call_id = ?", (call_id,)
+        ).fetchone()
+        if not exists:
+            conn.execute("INSERT INTO calls (call_id) VALUES (?)", (call_id,))
+    return call_id
+
+
 def append_turn(call_id: str, turn: dict) -> None:
     """Append one traced turn to `calls.turns`.
 

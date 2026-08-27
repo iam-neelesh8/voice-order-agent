@@ -10,7 +10,13 @@
 # cannot widen what the agent is allowed to do.
 llm:
   base_url: http://localhost:11434/v1
-  model: qwen2.5:3b-instruct
+  # Measured with `voice-order check-model`: 7b passes 7/7 behavioural checks,
+  # 3b passes 3/7 -- it never calls search_products at all and invents ids
+  # instead. The gap is judgement, not tool-calling syntax: both emit valid
+  # calls. Cost is speed: ~24s per turn on a 16 GB CPU-only laptop against
+  # ~15s for 3b. Neither is fast enough for live voice; that needs a GPU or a
+  # hosted endpoint, which is a change to base_url and nothing else.
+  model: qwen2.5:7b-instruct
   api_key_env: null
   # Zero on purpose. A phone order is not a place for creative variance, and
   # it makes a failing conversation reproducible.
