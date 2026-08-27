@@ -333,7 +333,8 @@ def test_an_order_can_be_placed_from_a_session_nobody_registered(tmp_path, monke
     bare IntegrityError instead of working or explaining itself.
     """
     monkeypatch.setenv("VOICE_ORDER_DATA_DIR", str(tmp_path))
-    from voice_order.db import repository, session as db
+    from voice_order.db import repository
+    from voice_order.db import session as db
 
     db.init_schema()
     repository.upsert_products(
