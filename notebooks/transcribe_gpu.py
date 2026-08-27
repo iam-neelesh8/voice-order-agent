@@ -55,9 +55,9 @@ print(f"CUDA devices: {ctranslate2.get_cuda_device_count()}", flush=True)
 #   every extra model      ~1x (large-v3 is ~3-4x small.en on its own)
 #   every extra condition  ~1x
 #   every extra n-best     ~1x  (N_BEST=5 is five decodes per clip)
-MODELS = ["small.en"]                     # add "large-v3" for the size comparison
+MODELS = ["large-v3"]                     # small.en is already done -- see data/transcripts_gpu/
 CONDITIONS = ["clean", "phone"]           # None = all five; the drop lives in these two
-N_BEST = 1                                # stage 4 needs 1-best; stage 5 consumes the rest
+N_BEST = 5                                # matches the small.en run, so the two are comparable
 
 # --- locate and unpack the bundle -------------------------------------------
 
