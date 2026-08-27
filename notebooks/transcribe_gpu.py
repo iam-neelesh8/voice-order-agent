@@ -52,36 +52,62 @@ N_BEST = 5                                # 1 is ~5x faster and enough for stage
 
 # --- locate and unpack the bundle -------------------------------------------
 
-candidates = (
-    glob.glob("/kaggle/input/**/asr_*.zip", recursive=True)
-    + glob.glob("./asr_*.zip")
-    + glob.glob("/content/asr_*.zip")
-)
-if not candidates:
-    try:
-        from google.colab import files
+# Kaggle DECOMPRESSES uploads: a .zip arrives already extracted, as a folder.
+# So look for the manifest first -- if it is there, the bundle is unpacked and
+# there is no zip to open. Searching only for the zip finds nothing and falls
+# into a recursive walk of 10,000 audio files, which looks exactly like a hang.
 
-        files.upload()
-        candidates = glob.glob("asr_*.zip")
-    except ImportError:
-        pass
-if not candidates:
-    raise SystemExit("asr_*.zip not found -- upload it first.")
+AUDIO_ROOT = None
 
-with zipfile.ZipFile(candidates[0]) as zf:
-    zf.extractall("audio")
-print("unpacked", candidates[0], flush=True)
+manifest_hits: list[str] = []
+for pattern in (
+    "/kaggle/input/*/manifest.jsonl",
+    "/kaggle/input/*/*/manifest.jsonl",
+    "./audio/manifest.jsonl",
+):
+    manifest_hits += glob.glob(pattern)
+
+if manifest_hits:
+    AUDIO_ROOT = os.path.dirname(manifest_hits[0])
+    print(f"bundle already extracted at {AUDIO_ROOT}", flush=True)
+else:
+    zips: list[str] = []
+    for pattern in ("/kaggle/input/*/asr_*.zip", "/kaggle/input/*/*/asr_*.zip",
+                    "./asr_*.zip", "/content/asr_*.zip"):
+        zips += glob.glob(pattern)
+
+    if not zips:
+        try:
+            from google.colab import files
+
+            files.upload()
+            zips = glob.glob("asr_*.zip")
+        except ImportError:
+            pass
+
+    if not zips:
+        print("nothing found. What IS attached:", flush=True)
+        for root, _dirs, fs in os.walk("/kaggle/input"):
+            if root.count("/") - 2 <= 2:
+                print(f"   {root} -> {fs[:6]}{' ...' if len(fs) > 6 else ''}", flush=True)
+        raise SystemExit(
+            "No asr_*.zip and no manifest.jsonl. Upload data/exports/asr_dev.zip; "
+            "note that Kaggle extracts it, so it appears as a folder."
+        )
+
+    with zipfile.ZipFile(zips[0]) as zf:
+        zf.extractall("audio")
+    AUDIO_ROOT = "audio"
+    print("unpacked", zips[0], flush=True)
 
 raw = [
     json.loads(line)
-    for line in open("audio/manifest.jsonl", encoding="utf-8")
+    for line in open(f"{AUDIO_ROOT}/manifest.jsonl", encoding="utf-8")
     if line.strip()
 ]
-# The first line carries a fingerprint of the audio this bundle was built
-# from. It is stamped into every transcript so the import can prove the
-# transcripts and the local audio are the same recordings.
 meta = next((r for r in raw if r.get("_meta")), {})
 AUDIO_FINGERPRINT = meta.get("audio_fingerprint")
+print("audio fingerprint:", AUDIO_FINGERPRINT, flush=True)
 manifest = [r for r in raw if not r.get("_meta")]
 print("audio fingerprint:", AUDIO_FINGERPRINT, flush=True)
 if CONDITIONS:
@@ -144,7 +170,7 @@ for model_name in MODELS:
         started = time.time()
         with open(out_path, "a", encoding="utf-8") as fh:
             for i, row in enumerate(todo, 1):
-                hyps = transcribe_one(model, f"audio/{row['path']}")
+                hyps = transcribe_one(model, f"{AUDIO_ROOT}/{row['path']}")
                 fh.write(
                     json.dumps(
                         {

@@ -63,32 +63,40 @@ if "CUDAExecutionProvider" not in providers:
 
 log("looking for the upload ...")
 
-# Shallow patterns first. A recursive walk of /kaggle/input is slow when
-# another dataset is attached -- the ASR bundle alone is ~10,000 files -- and
-# the upload is always one or two levels down anyway.
-candidates: list[str] = []
-for pattern in (
-    "/kaggle/input/*/embed_input.jsonl.gz",
-    "/kaggle/input/*/*/embed_input.jsonl.gz",
-    "./embed_input.jsonl.gz",
-    "/content/embed_input.jsonl.gz",
-):
-    candidates += glob.glob(pattern)
-if not candidates:
-    log("  not in the usual places, falling back to a recursive search ...")
-    candidates = glob.glob("/kaggle/input/**/embed_input.jsonl.gz", recursive=True)
-if not candidates:
-    try:                                     # Colab: prompt for the upload
-        from google.colab import files
+# Kaggle DECOMPRESSES uploads. A .gz arrives as a plain .jsonl with no
+# extension to tell you, so both names have to be searched -- looking only for
+# the name you uploaded finds nothing and falls into a recursive walk of every
+# attached dataset, which looks exactly like a hang.
+NAMES = ("embed_input.jsonl.gz", "embed_input.jsonl")
 
-        files.upload()
-        candidates = glob.glob("embed_input.jsonl.gz")
+candidates: list[str] = []
+for name in NAMES:
+    for pattern in (
+        f"/kaggle/input/*/{name}",
+        f"/kaggle/input/*/*/{name}",
+        f"./{name}",
+        f"/content/{name}",
+    ):
+        candidates += glob.glob(pattern)
+
+if not candidates:
+    log("  not in the usual places; listing what IS attached:")
+    for root, _dirs, files in os.walk("/kaggle/input"):
+        if root.count("/") - 2 <= 2:
+            log(f"    {root}  ->  {files[:6]}{' ...' if len(files) > 6 else ''}")
+    try:                                     # Colab: prompt for the upload
+        from google.colab import files as colab_files
+
+        colab_files.upload()
+        candidates = [f for n in NAMES for f in glob.glob(n)]
     except ImportError:
         pass
+
 if not candidates:
     raise SystemExit(
-        "embed_input.jsonl.gz not found. Upload it first "
-        "(Kaggle: Add Data -> Upload; Colab: run this cell and pick the file)."
+        "embed_input.jsonl(.gz) not found -- see the listing above for what is "
+        "actually attached. On Kaggle: Add Data -> Upload the file, and note "
+        "that Kaggle decompresses it, so it appears without the .gz."
     )
 
 source = candidates[0]
@@ -96,8 +104,18 @@ log(f"reading {source}")
 
 # --- read ids and texts ------------------------------------------------------
 
+def open_maybe_gzip(path):
+    """Kaggle strips the .gz, so sniff the magic bytes instead of trusting it."""
+    with open(path, "rb") as probe:
+        gzipped = probe.read(2) == bytes([0x1F, 0x8B])  # gzip magic
+    log(f"  {'gzipped' if gzipped else 'plain text'}")
+    if gzipped:
+        return gzip.open(path, "rt", encoding="utf-8")
+    return open(path, "rt", encoding="utf-8")
+
+
 meta, ids, texts = None, [], []
-with gzip.open(source, "rt", encoding="utf-8") as fh:
+with open_maybe_gzip(source) as fh:
     for line in fh:
         row = json.loads(line)
         if row.get("_meta"):
