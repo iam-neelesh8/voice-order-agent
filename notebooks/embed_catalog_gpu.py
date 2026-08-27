@@ -34,13 +34,29 @@ def log(message):
     print(f"[{time.time() - _T0:6.1f}s] {message}", flush=True)
 
 # fastembed-gpu keeps the exact ONNX weights the local CPU path uses, so the
-# vectors are interchangeable. Installing plain `fastembed` here would still
-# work but would run on CPU and defeat the point.
-# Kaggle images ship CPU onnxruntime. Installing the GPU build alongside it
-# leaves the CPU one winning and the whole job silently runs ~180x slower, so
-# the CPU package is removed first.
-os.system("pip uninstall -y -q onnxruntime fastembed >/dev/null 2>&1")
-os.system("pip install -q fastembed-gpu onnxruntime-gpu")
+# vectors are interchangeable -- which is what lets the import verify them.
+#
+# The CUDA build needs care. PyPI's onnxruntime-gpu is now compiled against
+# CUDA 13, while Kaggle and Colab images ship CUDA 12. The mismatch does not
+# fail at install time: the package imports, reports CUDAExecutionProvider as
+# available, and then cannot load libonnxruntime_providers_cuda.so because
+# libcublasLt.so.13 is absent -- so the session quietly falls back to CPU and
+# the job takes three hours instead of one minute.
+#
+# Microsoft publish a CUDA-12 build on a separate index. Install order matters:
+# fastembed-gpu drags in the PyPI (CUDA 13) wheel, so it is replaced after.
+CUDA12_INDEX = (
+    "https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/"
+    "onnxruntime-cuda-12/pypi/simple/"
+)
+
+os.system("pip uninstall -y -q onnxruntime onnxruntime-gpu fastembed fastembed-gpu "
+          ">/dev/null 2>&1")
+os.system("pip install -q fastembed-gpu >/dev/null 2>&1")
+os.system(
+    f"pip install -q --force-reinstall onnxruntime-gpu --extra-index-url {CUDA12_INDEX}"
+    " >/dev/null 2>&1"
+)
 
 import numpy as np
 import onnxruntime
@@ -151,8 +167,14 @@ try:
     log(f"session providers: {active}")
     if "CUDAExecutionProvider" not in active:
         raise SystemExit(
-            "The session fell back to CPU despite CUDA being available. "
-            "Restart & Clear Cell Outputs and run again."
+            "The ONNX session fell back to CPU.\n\n"
+            "Almost always a CUDA version mismatch: PyPI's onnxruntime-gpu is "
+            "built for CUDA 13, and this image has CUDA 12. Look above for "
+            "'libcublasLt.so.13: cannot open shared object file' to confirm.\n\n"
+            "Fix: Run -> Restart & Clear Cell Outputs, then run this cell "
+            "again. The install above already pulls the CUDA-12 build, but it "
+            "cannot take effect until the process restarts -- the broken "
+            "library is already loaded into this one."
         )
 except AttributeError:
     log("(could not read session providers on this fastembed version)")

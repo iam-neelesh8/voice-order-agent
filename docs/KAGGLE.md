@@ -142,6 +142,26 @@ The drop from **0.576** is the headline result of the project.
 
 ---
 
+## If it says the session fell back to CPU
+
+PyPI's `onnxruntime-gpu` is built against CUDA 13; Kaggle and Colab images
+ship CUDA 12. The mismatch does not fail at install time -- the package
+imports, reports `CUDAExecutionProvider` as available, and only fails when the
+session tries to load the provider library:
+
+```
+libcublasLt.so.13: cannot open shared object file
+```
+
+It then falls back to CPU silently, which is a three-hour run rather than a
+one-minute one. The notebook installs the CUDA-12 build from Microsoft's
+separate index to avoid this, and refuses to continue if the session is on
+CPU anyway.
+
+**If you hit it: Run -> Restart & Clear Cell Outputs, then run the cell
+again.** The corrected install cannot take effect in a process that has
+already loaded the broken library.
+
 ## If a cell runs for a long time with no new output
 
 Every step in both notebooks now prints a timestamp, so the last line tells
