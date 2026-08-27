@@ -21,7 +21,6 @@
 #   voice-order import-transcripts transcripts
 # =============================================================================
 
-import glob
 import json
 import os
 import time

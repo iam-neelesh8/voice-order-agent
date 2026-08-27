@@ -21,7 +21,6 @@
 # import will reject the result.
 # =============================================================================
 
-import glob
 import gzip
 import json
 import os
