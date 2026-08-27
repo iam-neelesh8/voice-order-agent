@@ -91,7 +91,21 @@ whether dense earns its place at all.
 
 ---
 
-## Job 2 — transcribe the spoken set (~1 hour)
+## Anything that takes more than ~20 minutes: commit it, do not run it
+
+Use **Save Version -> Save & Run All (Commit)**, not the Run button.
+
+An interactive session is reclaimed when it goes idle. Leaving the laptop open
+and the tab visible does not count as activity, and `/kaggle/working` is wiped
+when the session ends. A completed 4.4-hour transcription run was lost this
+way -- every clip done, the archive written, and nothing there in the morning.
+
+A committed run executes headlessly on Kaggle's side. Close the tab, and
+collect the result from the notebook's **Version -> Output** tab.
+
+Job 1 is short enough to run interactively. Job 2 is not.
+
+## Job 2 — transcribe the spoken set
 
 **Upload the data**
 

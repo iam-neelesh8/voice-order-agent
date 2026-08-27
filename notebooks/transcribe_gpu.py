@@ -1,10 +1,25 @@
 # =============================================================================
 # voice-order-agent -- transcribe the spoken test set on a GPU
 #
+# ###########################################################################
+# RUN THIS WITH "SAVE VERSION -> SAVE & RUN ALL (COMMIT)". NOT THE RUN BUTTON.
+#
+# This takes hours. A Kaggle *interactive* session is reclaimed when it goes
+# idle -- leaving the laptop open and the tab visible does not count as
+# activity -- and /kaggle/working is wiped with it. That has already destroyed
+# one completed 4.4-hour run: every clip transcribed, the zip written, and
+# nothing left by morning.
+#
+# "Save & Run All" runs headless on Kaggle's side with no browser involved.
+# Close the tab, sleep, and collect the output from the notebook's
+# Version -> Output tab afterwards.
+# ###########################################################################
+#
 # Paste into ONE cell of a Kaggle or Colab notebook with a GPU runtime, after
 # uploading data/exports/asr_dev.zip.
 #
 #   Kaggle : Add Data -> Upload -> asr_dev.zip. Settings -> Accelerator: GPU.
+#            Then Save Version -> Save & Run All (Commit).
 #   Colab  : run the cell; it will prompt you to upload.
 #
 # MEASURED ON A KAGGLE T4, 1,998 clips per condition:
