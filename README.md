@@ -1,8 +1,17 @@
 # voice-order-agent
 
-A voice agent that takes product orders over the phone — speech in, order in
-a database out. Open-source ASR, hybrid retrieval, and an eval harness that
-measures whether it actually works.
+**Goal: the best cheap phone-to-purchase application.** A caller speaks, an
+order is placed. Three stages, each built the cheapest good way — open source
+first, an API key only where it clearly wins:
+
+    voice -> text      (ASR: faster-whisper)
+    text  -> product   (retrieval + a local-LLM agent)
+    text  -> voice     (TTS: Piper)
+
+Every technology choice is measured, not assumed, and the reasoning is kept as
+a learning journal: **[docs/LEARNINGS.md](docs/LEARNINGS.md)** — how BM25,
+embeddings, local LLMs and Whisper actually behave on this problem, with the
+number behind every claim.
 
 ```
 caller ──► ASR ──► agent loop ──► retrieval ──► SQLite
