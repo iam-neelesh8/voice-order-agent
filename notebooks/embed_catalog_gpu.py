@@ -30,10 +30,27 @@ import time
 # fastembed-gpu keeps the exact ONNX weights the local CPU path uses, so the
 # vectors are interchangeable. Installing plain `fastembed` here would still
 # work but would run on CPU and defeat the point.
+# Kaggle images ship CPU onnxruntime. Installing the GPU build alongside it
+# leaves the CPU one winning and the whole job silently runs ~180x slower, so
+# the CPU package is removed first.
+os.system("pip uninstall -y -q onnxruntime fastembed >/dev/null 2>&1")
 os.system("pip install -q fastembed-gpu onnxruntime-gpu")
 
 import numpy as np
+import onnxruntime
 from fastembed import TextEmbedding
+
+# --- fail loudly if this is not actually on a GPU ----------------------------
+
+providers = onnxruntime.get_available_providers()
+print("onnxruntime providers:", providers, flush=True)
+if "CUDAExecutionProvider" not in providers:
+    raise SystemExit(
+        "No CUDAExecutionProvider. This would run on CPU and take about three "
+        "hours instead of one minute.\n"
+        "Fix: Settings -> Accelerator -> GPU T4 x2, then Run -> Restart & Clear "
+        "Cell Outputs, and run this cell again."
+    )
 
 # --- locate the export -------------------------------------------------------
 
@@ -57,7 +74,7 @@ if not candidates:
     )
 
 source = candidates[0]
-print("reading", source)
+print("reading", source, flush=True)
 
 # --- read ids and texts ------------------------------------------------------
 
@@ -72,16 +89,48 @@ with gzip.open(source, "rt", encoding="utf-8") as fh:
         texts.append(row["text"])
 
 model_name = (meta or {}).get("model", "BAAI/bge-small-en-v1.5")
-print(f"{len(texts):,} texts  |  model {model_name}")
+print(f"{len(texts):,} texts  |  model {model_name}", flush=True)
 
 # --- embed -------------------------------------------------------------------
 
 model = TextEmbedding(model_name=model_name, providers=["CUDAExecutionProvider"])
 
+# Time a small batch before committing to the whole catalog. A GPU does
+# hundreds of texts a second; CPU does about ten. Better to find out now than
+# forty minutes in with nothing on screen.
+warm = texts[:256]
 t0 = time.time()
-vectors = np.asarray(list(model.embed(texts, batch_size=256)), dtype=np.float32)
+list(model.embed(warm, batch_size=256))
+rate = len(warm) / max(time.time() - t0, 1e-6)
+print(f"warm-up: {rate:,.0f} texts/s", flush=True)
+if rate < 100:
+    raise SystemExit(
+        f"Only {rate:,.0f} texts/s -- that is CPU speed, and the full run would "
+        f"take about {len(texts)/rate/60:,.0f} minutes.\n"
+        "Check Settings -> Accelerator is GPU, then Restart & Clear Cell Outputs."
+    )
+
+# Chunked so progress is visible. One blocking call over 100k texts prints
+# nothing for the entire run, which is indistinguishable from being hung.
+t0 = time.time()
+chunks = []
+STEP = 5000
+for start in range(0, len(texts), STEP):
+    chunks.append(
+        np.asarray(
+            list(model.embed(texts[start : start + STEP], batch_size=256)),
+            dtype=np.float32,
+        )
+    )
+    done = min(start + STEP, len(texts))
+    speed = done / (time.time() - t0)
+    print(f"  {done:,}/{len(texts):,}  ({speed:,.0f}/s, "
+          f"~{(len(texts)-done)/speed:,.0f}s left)", flush=True)
+
+vectors = np.vstack(chunks)
 elapsed = time.time() - t0
-print(f"embedded in {elapsed:.1f}s  ({len(texts)/elapsed:,.0f} texts/s)  shape {vectors.shape}")
+print(f"embedded in {elapsed:.1f}s  ({len(texts)/elapsed:,.0f} texts/s)  shape {vectors.shape}",
+      flush=True)
 
 # L2-normalise so cosine similarity is a plain dot product, matching what the
 # local pipeline stores.

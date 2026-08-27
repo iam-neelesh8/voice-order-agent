@@ -30,6 +30,23 @@ Then, once on kaggle.com:
 3. Right panel → **Session options** → **Internet** → **On**
    *(required — both notebooks pip-install and download model weights)*
 
+**Check the GPU is really attached.** Kaggle ships a CPU build of
+`onnxruntime`, and installing the GPU one alongside it leaves the CPU build
+winning — silently, at roughly 1/180th the speed. Both notebooks now refuse to
+start if that happens, but if you want to check by hand:
+
+```python
+import onnxruntime, subprocess
+print(onnxruntime.get_available_providers())
+print(subprocess.run(["nvidia-smi"], capture_output=True, text=True).stdout[:400])
+```
+
+`CUDAExecutionProvider` must be in that list.
+
+**If a cell sits with no output**, it is not necessarily working. Stop it,
+**Run → Restart & Clear Cell Outputs**, and re-run — restarting matters because
+the wrong `onnxruntime` stays loaded in memory otherwise.
+
 ---
 
 ## Job 1 — embed the catalog (~5 minutes total)

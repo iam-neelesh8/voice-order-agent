@@ -29,7 +29,20 @@ import zipfile
 
 os.system("pip install -q faster-whisper")
 
+import ctranslate2
 from faster_whisper import WhisperModel
+
+# --- fail loudly if this is not actually on a GPU ----------------------------
+# faster-whisper raises on device="cuda" without CUDA, but the message is deep
+# in ctranslate2 and easy to miss. Better to say it plainly up front.
+
+if ctranslate2.get_cuda_device_count() < 1:
+    raise SystemExit(
+        "No CUDA device. On CPU this run takes hours rather than under one.\n"
+        "Fix: Settings -> Accelerator -> GPU T4 x2, then "
+        "Run -> Restart & Clear Cell Outputs."
+    )
+print(f"CUDA devices: {ctranslate2.get_cuda_device_count()}", flush=True)
 
 # --- what to run -------------------------------------------------------------
 
@@ -57,7 +70,7 @@ if not candidates:
 
 with zipfile.ZipFile(candidates[0]) as zf:
     zf.extractall("audio")
-print("unpacked", candidates[0])
+print("unpacked", candidates[0], flush=True)
 
 raw = [
     json.loads(line)
@@ -70,12 +83,12 @@ raw = [
 meta = next((r for r in raw if r.get("_meta")), {})
 AUDIO_FINGERPRINT = meta.get("audio_fingerprint")
 manifest = [r for r in raw if not r.get("_meta")]
-print("audio fingerprint:", AUDIO_FINGERPRINT)
+print("audio fingerprint:", AUDIO_FINGERPRINT, flush=True)
 if CONDITIONS:
     manifest = [r for r in manifest if r["condition"] in CONDITIONS]
 
 conditions = sorted({r["condition"] for r in manifest})
-print(f"{len(manifest):,} clips across {conditions}")
+print(f"{len(manifest):,} clips across {conditions}", flush=True)
 
 os.makedirs("transcripts", exist_ok=True)
 
