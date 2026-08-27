@@ -108,3 +108,24 @@ def test_two_fresh_builds_agree(tiny_split):
     }
 
     assert first == second
+
+
+def test_the_clean_condition_does_not_clip(tiny_split):
+    """`clean` is the ceiling the other conditions are compared against.
+
+    Piper emits at full scale and the 22k->16k resampler overshoots it
+    (measured 1.0096), which a 16-bit file silently clamps. A handful of
+    samples per clip, but clipping in the undegraded reference makes the
+    clean-vs-phone gap slightly smaller than it should be -- it understates
+    the very thing stage 4 exists to measure.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    from voice_order.evaluation import audio
+
+    audio.build_spoken_set("dev", limit=3)
+
+    for path in sorted((audio.split_dir("dev") / "clean").glob("*.flac")):
+        data, _ = sf.read(path, dtype="float32")
+        assert float(np.max(np.abs(data))) < 1.0, f"{path.name} is clipped"

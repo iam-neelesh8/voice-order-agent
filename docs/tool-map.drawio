@@ -1,0 +1,357 @@
+<mxfile host="app.diagrams.net" version="24.7.17" type="device">
+
+  <diagram id="call" name="1 · One Call, Step by Step">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2336" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="t" value="&lt;b&gt;One call, start to finish&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Every step names the tool that does the work and the file it lives in.&lt;br&gt;Colour says &lt;b&gt;who decides&lt;/b&gt;: a model, or code with rules you can read.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="60" y="20" width="900" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" value="MODEL decides" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="30" width="130" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" value="CODE decides" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="30" width="130" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" value="STORAGE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="30" width="110" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s1" value="&lt;b&gt;1 · Phone rings, audio comes in&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;8 kHz mono, the narrow band a phone line carries&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; telephony / microphone&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; agent/loop.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="560" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s2" value="&lt;b&gt;2 · Speech becomes text&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;returns 5 guesses, not 1 -- phone lines mangle part numbers&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; faster-whisper&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; asr/transcribe.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="245" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" value="&quot;I need two AC Delco 41-993 spark plugs&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="660" y="260" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3" value="&lt;b&gt;3 · Work out what they want&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;name, phone, product, quantity, &quot;actually make that three&quot;&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; local LLM (Ollama / vLLM)&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; agent/brain.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="360" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" value="&lt;b&gt;The LLM does not act.&lt;/b&gt; It asks for a tool call:&lt;br&gt;&lt;font style=&quot;font-family: monospace; font-size: 10px;&quot;&gt;search_products(&quot;AC Delco 41-993 spark plug&quot;, qty=2)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="660" y="365" width="360" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s4" value="&lt;b&gt;4 · Find the product&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;keyword search + meaning search, merged&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; BM25 (bm25s) + embeddings (fastembed)&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; retrieval/fusion.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="475" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n4" value="&lt;b&gt;No LLM here.&lt;/b&gt; Search is deterministic and measured --&lt;br&gt;recall@1 0.970 when the caller gives brand + part number,&lt;br&gt;0.117 when they only say &quot;spark plugs&quot;." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="660" y="475" width="360" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s5" value="&lt;b&gt;5 · Sure enough to add it?&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;a fixed threshold, plus the gap to the runner-up&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; plain rules&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; agent/policy.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="590" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" value="&lt;b&gt;Deliberately NOT the LLM.&lt;/b&gt; A model asked &quot;are you sure?&quot;&lt;br&gt;will say yes. The threshold is the thing that stops a&lt;br&gt;confidently wrong order, so it stays readable and testable." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="660" y="590" width="360" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s6" value="&lt;b&gt;6 · Add to the cart&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;the cart is code's, never the model's -- it validates every change&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; state machine&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; agent/state.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="705" width="560" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s7" value="&lt;b&gt;7 · Say something back&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;the LLM writes the sentence, Piper speaks it&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; local LLM + Piper TTS&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; agent/brain.py, tts/speak.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="820" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n7" value="&quot;That's two AC Delco 41-993 spark plugs. Anything else?&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="660" y="835" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s8" value="&lt;b&gt;8 · Anything else?&lt;/b&gt;&amp;nbsp;&amp;nbsp;→ loop back to step 2&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;&lt;b&gt;tool:&lt;/b&gt; state machine&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; agent/loop.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="935" width="560" height="65" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s9" value="&lt;b&gt;9 · Read the total, get a yes&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;code adds it up, the LLM says it out loud&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; rules + LLM wording&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; agent/policy.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1035" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n9" value="Money is never generated by a model. Prices come from&lt;br&gt;the catalog, the sum is arithmetic in code." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="660" y="1045" width="360" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s10" value="&lt;b&gt;10 · Write the order&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;customer, items, total -- and the transcript that produced it&lt;br&gt;&lt;b&gt;tool:&lt;/b&gt; SQLite&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;b&gt;file:&lt;/b&gt; db/repository.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1150" width="560" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n10" value="Every order stores what was heard and what was found,&lt;br&gt;so a wrong order can be traced to the ASR or the search&lt;br&gt;rather than shrugged at." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="660" y="1155" width="360" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s1" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s2" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s3" target="s4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s4" target="s5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s5" target="s6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s6" target="s7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s7" target="s8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s8" target="s9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;" edge="1" parent="1" source="s9" target="s10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eloop" value="more items" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#9673A6;strokeWidth=2;exitX=0;exitY=0.5;entryX=0;entryY=0.5;fontSize=10;" edge="1" parent="1" source="s8" target="s2">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="30" y="967" /><mxPoint x="30" y="285" /></Array></mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="tree" name="2 · Codebase Tree">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="tt" value="&lt;b&gt;Where every tool lives&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;One folder per job. The tool is named on the branch; the goal it serves is on the right.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="root" value="&lt;b&gt;voice_order/&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#333333;strokeWidth=2;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b1" value="&lt;b&gt;catalog/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;stdlib urllib&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="100" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="b1d" value="stream.py · normalize.py · load.py&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; get 100k products in, and pull the part numbers out of them&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="100" width="440" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b2" value="&lt;b&gt;db/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;SQLite&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="180" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="b2d" value="schema.sql · session.py · repository.py&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; hold products, customers, carts, orders. One file, no server.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="180" width="440" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b3" value="&lt;b&gt;retrieval/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;bm25s + fastembed&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=3;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="260" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b3d" value="lexical.py&amp;nbsp; BM25 keyword match -- catches &quot;41-993&quot; exactly&lt;br&gt;dense.py&amp;nbsp;&amp;nbsp;&amp;nbsp; embeddings -- catches &quot;the ceramic ones&quot;&lt;br&gt;part_number.py&amp;nbsp; spoken digits -&amp;gt; figures, sounds-like matching&lt;br&gt;fusion.py&amp;nbsp;&amp;nbsp; merges the ranked lists&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; turn what the caller said into the right product&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="255" width="440" height="95" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b4" value="&lt;b&gt;asr/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;faster-whisper&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="375" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="b4d" value="transcribe.py · batch.py · portable.py&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; speech to text, several guesses per utterance&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="375" width="440" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b5" value="&lt;b&gt;tts/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Piper&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="455" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="b5d" value="speak.py&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; talk back to the caller. Also speaks the test set.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="455" width="440" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b6" value="&lt;b&gt;llm/&lt;/b&gt;&amp;nbsp;&lt;font color=&quot;#B85450&quot;&gt;NEW&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Ollama / vLLM / API&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=3;dashed=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="535" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b6d" value="client.py&amp;nbsp;&amp;nbsp; one interface, any backend&lt;br&gt;tools.py&amp;nbsp;&amp;nbsp;&amp;nbsp; the functions the model is allowed to call&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; understand messy speech and write natural replies.&lt;br&gt;Swapping local for an API is two lines of config -- see page 4.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="530" width="440" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b7" value="&lt;b&gt;agent/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;plain Python&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=3;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="635" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="b7d" value="brain.py&amp;nbsp;&amp;nbsp;&lt;font color=&quot;#B85450&quot;&gt;NEW&lt;/font&gt;&amp;nbsp; drives the LLM, executes its tool calls&lt;br&gt;state.py&amp;nbsp;&amp;nbsp;&amp;nbsp; the cart, and the only code that may change it&lt;br&gt;policy.py&amp;nbsp;&amp;nbsp; confirm / re-ask thresholds, read-back wording&lt;br&gt;loop.py&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; one turn at a time, start to hang-up&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; hold the conversation together and keep the cart honest&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="630" width="440" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b8" value="&lt;b&gt;evaluation/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;numpy · scipy · jiwer&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="755" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="b8d" value="generate.py&amp;nbsp; makes the fake customer calls&lt;br&gt;audio.py&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; speaks them and wrecks them into phone audio&lt;br&gt;degrade.py&amp;nbsp;&amp;nbsp; the phone line itself, in numpy&lt;br&gt;metrics.py · run.py&amp;nbsp; scores it&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; prove it works before a real caller finds out it doesn't&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="750" width="440" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b9" value="&lt;b&gt;cli.py&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;argparse&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="260" y="875" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="b9d" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;&lt;b&gt;goal:&lt;/b&gt; one command per job -- catalog, index, gen-audio, transcribe, eval, call&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;align=left;verticalAlign=middle;spacingLeft=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="875" width="440" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;" edge="1" parent="1" source="root" target="b1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c2" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;" edge="1" parent="1" source="root" target="b2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c3" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;strokeWidth=2;" edge="1" parent="1" source="root" target="b3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c4" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;" edge="1" parent="1" source="root" target="b4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c5" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;" edge="1" parent="1" source="root" target="b5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c6" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;dashed=1;strokeWidth=2;" edge="1" parent="1" source="root" target="b6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c7" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;strokeWidth=2;" edge="1" parent="1" source="root" target="b7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c8" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;" edge="1" parent="1" source="root" target="b8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c9" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;exitX=1;exitY=0.5;" edge="1" parent="1" source="root" target="b9"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="key" value="&lt;b&gt;built already&lt;/b&gt;&amp;nbsp;&amp;nbsp;catalog · db · retrieval · asr · tts · evaluation · cli&lt;br&gt;&lt;b&gt;still to write&lt;/b&gt;&amp;nbsp;&amp;nbsp;llm/ (all of it) · agent/brain.py · agent/* bodies · customers table" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=2;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="920" y="620" width="420" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="split" name="3 · Who Decides What">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="st" value="&lt;b&gt;The hybrid split&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;The model talks. The code decides anything that costs money or ends up in the database.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbox" value="&lt;b&gt;THE LLM DOES&lt;/b&gt;&lt;br&gt;&lt;br&gt;· work out what a rambling sentence means&lt;br&gt;· catch the name and phone number&lt;br&gt;· handle &quot;actually make that three&quot;&lt;br&gt;· handle &quot;what was the second one again?&quot;&lt;br&gt;· decide what to ask next&lt;br&gt;· write the sentence that gets spoken&lt;br&gt;&lt;br&gt;&lt;i&gt;It proposes. It never acts directly.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="420" height="290" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cbox" value="&lt;b&gt;THE CODE DOES&lt;/b&gt;&lt;br&gt;&lt;br&gt;· search the catalog (BM25 + embeddings)&lt;br&gt;· decide if a match is good enough&lt;br&gt;· own the cart -- add, change, remove&lt;br&gt;· add up the total&lt;br&gt;· write the order to the database&lt;br&gt;· keep the transcript trail&lt;br&gt;&lt;br&gt;&lt;i&gt;Every one of these is testable without a model.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="900" y="110" width="420" height="290" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mid" value="&lt;b&gt;THE ONLY WAY ACROSS&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;the model may call these, and nothing else&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-family: monospace; font-size: 11px;&quot;&gt;search_products(text, qty)&lt;br&gt;add_to_cart(asin, qty)&lt;br&gt;change_quantity(line, qty)&lt;br&gt;remove_from_cart(line)&lt;br&gt;read_cart()&lt;br&gt;set_customer(name, phone)&lt;br&gt;finalise_order()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=16;spacingTop=12;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="510" y="110" width="340" height="290" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a1" value="asks for" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#9673A6;exitX=1;exitY=0.4;entryX=0;entryY=0.4;fontSize=11;" edge="1" parent="1" source="lbox" target="mid"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a2" value="validates&#10;and runs" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=3;strokeColor=#6C8EBF;exitX=1;exitY=0.4;entryX=0;entryY=0.4;fontSize=11;" edge="1" parent="1" source="mid" target="cbox"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a3" value="result goes back" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#666666;exitX=0.5;exitY=1;entryX=0.5;entryY=1;fontSize=11;" edge="1" parent="1" source="cbox" target="lbox">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1110" y="440" /><mxPoint x="250" y="440" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="rule" value="&lt;b&gt;WHY THE LINE IS DRAWN HERE&lt;/b&gt;&lt;br&gt;&lt;br&gt;A model asked &quot;are you confident?&quot; will say yes. So the model never gets to decide whether a match is good enough -- a threshold does, and you can read it, test it, and tune it.&lt;br&gt;&lt;br&gt;A model asked to add up a total will usually get it right. Usually is not good enough for money. Prices come from the catalog and the sum is arithmetic.&lt;br&gt;&lt;br&gt;&lt;b&gt;Net effect:&lt;/b&gt; when an order comes out wrong, you can point at the step that did it -- the transcript, the search result, or the threshold. That stays true no matter which model is plugged in." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;align=left;verticalAlign=top;spacingLeft=18;spacingTop=14;spacingRight=18;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="640" height="300" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fail" value="&lt;b&gt;WHAT HAPPENS WHEN THE MODEL IS WRONG&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;It mishears the product&lt;/b&gt;&lt;br&gt;→ search returns a poor match → threshold refuses → agent reads it back and asks. Caller corrects it.&lt;br&gt;&lt;br&gt;&lt;b&gt;It invents a product that isn't in the catalog&lt;/b&gt;&lt;br&gt;→ add_to_cart rejects an unknown id. It cannot be added.&lt;br&gt;&lt;br&gt;&lt;b&gt;It gets the quantity wrong&lt;/b&gt;&lt;br&gt;→ read-back says the number out loud before the order is placed.&lt;br&gt;&lt;br&gt;&lt;b&gt;It makes up a price&lt;/b&gt;&lt;br&gt;→ it never sees prices. The total is computed from the catalog." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=2;align=left;verticalAlign=top;spacingLeft=18;spacingTop=14;spacingRight=18;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="720" y="480" width="600" height="300" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="tools" name="4 · Tool Inventory">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="it" value="&lt;b&gt;Every tool, and what it can be swapped for&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 13px;&quot;&gt;Nothing here needs an account. Every model runs locally; the LLM can point at an API instead by changing two config lines.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1000" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="hdr" value="&lt;b&gt;tool&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr2" value="&lt;b&gt;what it does&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="110" width="330" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr3" value="&lt;b&gt;where&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="570" y="110" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="hdr4" value="&lt;b&gt;swap for&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="820" y="110" width="460" height="36" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r1a" value="&lt;b&gt;faster-whisper&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;small.en / large-v3&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="146" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r1b" value="hears the caller; returns 5 guesses, not 1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="146" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r1c" value="asr/transcribe.py" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="146" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r1d" value="any Whisper size; or a hosted STT API behind the same wrapper" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="146" width="460" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r2a" value="&lt;b&gt;local LLM&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;Ollama or vLLM&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=3;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="206" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r2b" value="understands the conversation, asks for tool calls, writes the reply" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="206" width="330" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r2c" value="llm/client.py&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;agent/brain.py drives it&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="206" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r2d" value="&lt;b&gt;any OpenAI-compatible endpoint.&lt;/b&gt; Ollama, vLLM, llama.cpp and LM Studio all speak it, and so do the commercial APIs -- so local and hosted are the same code path." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="206" width="460" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r3a" value="&lt;b&gt;bm25s&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="276" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r3b" value="keyword search -- the one that matches &quot;41-993&quot; exactly" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="276" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r3c" value="retrieval/lexical.py" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="276" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r3d" value="Tantivy or Elasticsearch, if the catalog outgrows memory" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="276" width="460" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r4a" value="&lt;b&gt;fastembed&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;bge-small, ONNX&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="336" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4b" value="meaning search -- matches &quot;the ceramic ones&quot; to the right pads" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="336" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4c" value="retrieval/dense.py" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="336" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4d" value="sentence-transformers, or a hosted embedding API. No torch today -- that is why fastembed was chosen." style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="336" width="460" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r5a" value="&lt;b&gt;Piper&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="396" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r5b" value="speaks to the caller; also speaks the test set" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="396" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r5c" value="tts/speak.py" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="396" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r5d" value="Kokoro or a hosted TTS, if the voice needs to sound warmer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="396" width="460" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r6a" value="&lt;b&gt;SQLite&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot;&gt;stdlib&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="456" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r6b" value="products, customers, carts, orders" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="456" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r6c" value="db/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="456" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r6d" value="Postgres -- one more implementation of db/repository.py, nothing above it changes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="456" width="460" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r7a" value="&lt;b&gt;numpy + scipy&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="516" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r7b" value="turns clean audio into phone audio, for testing only" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="516" width="330" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r7c" value="evaluation/degrade.py" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="570" y="516" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r7d" value="nothing -- ffmpeg was rejected because it is a system install and its output varies by build" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCCCCC;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="516" width="460" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cfg" value="&lt;b&gt;SWITCHING LOCAL → API&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-family: monospace; font-size: 12px;&quot;&gt;# configs/agent.yaml&lt;br&gt;llm:&lt;br&gt;&amp;nbsp;&amp;nbsp;base_url: http://localhost:11434/v1&amp;nbsp;&amp;nbsp;&lt;font color=&quot;#666666&quot;&gt;# Ollama&lt;/font&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;model: qwen2.5:7b-instruct&lt;br&gt;&amp;nbsp;&amp;nbsp;api_key_env: null&lt;/font&gt;&lt;br&gt;&lt;br&gt;becomes&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-family: monospace; font-size: 12px;&quot;&gt;llm:&lt;br&gt;&amp;nbsp;&amp;nbsp;base_url: https://&amp;lt;provider&amp;gt;/v1&lt;br&gt;&amp;nbsp;&amp;nbsp;model: &amp;lt;model name&amp;gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;api_key_env: MY_API_KEY&lt;/font&gt;&lt;br&gt;&lt;br&gt;No code changes. The tool definitions, the cart rules and the&lt;br&gt;thresholds are all outside the model, so swapping it cannot&lt;br&gt;change what the agent is allowed to do." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=18;spacingTop=14;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="620" height="420" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gaps" value="&lt;b&gt;WHAT STILL HAS TO BE DECIDED&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;1 · Customers&lt;/b&gt;&lt;br&gt;There is no customers table. Name and phone have nowhere to go. This changes the schema, so it should land before the agent is written.&lt;br&gt;&lt;br&gt;&lt;b&gt;2 · Stock&lt;/b&gt;&lt;br&gt;Amazon data has no stock levels, so &quot;sorry, we're out&quot; cannot be said honestly. Either add a stock column and seed it, or drop that branch from the call flow.&lt;br&gt;&lt;br&gt;&lt;b&gt;3 · Which local model&lt;/b&gt;&lt;br&gt;It needs reliable tool-calling, which rules out the smallest ones. A 7-8B instruct model is the usual floor.&lt;br&gt;&lt;br&gt;&lt;b&gt;4 · Where calls come from&lt;/b&gt;&lt;br&gt;A real phone line, or a microphone demo. Changes step 1 only." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=3;align=left;verticalAlign=top;spacingLeft=18;spacingTop=14;spacingRight=18;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="620" width="580" height="420" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+</mxfile>

@@ -149,6 +149,15 @@ def build_spoken_set(
                 # and Piper's 22 kHz output is a third more bytes for
                 # information no model in this pipeline will ever look at.
                 data, out_rate = degrade.resample(audio, rate, CLEAN_RATE), CLEAN_RATE
+                # Piper peaks at full scale and the resampler overshoots it --
+                # measured up to 1.0096, which a 16-bit file clamps. Only a
+                # few samples per clip, but this is the condition that is
+                # supposed to be the *undistorted* ceiling, so it should not
+                # carry clipping of its own. Scaled only when it would clip,
+                # to leave the other 99% of clips at their natural level.
+                peak = float(np.max(np.abs(data))) if len(data) else 0.0
+                if peak > 1.0:
+                    data = data * (0.999 / peak)
             elif snr is None:
                 data, out_rate = phone, phone_rate
             else:
@@ -166,6 +175,31 @@ def build_spoken_set(
     stats["manifest"] = len(manifest)
     stats["conditions"] = conditions
     return stats
+
+
+def audio_fingerprint(split: str, rows: list[dict] | None = None) -> str:
+    """Hash of the clip bytes themselves, in manifest order.
+
+    Exists because `import-transcripts` could not catch the one mistake most
+    likely to happen: uploading a stale audio bundle. The query_ids match --
+    the queries never changed, only the audio did -- so the id check passes
+    and transcripts of the wrong recordings install silently.
+
+    Hashing the bytes rather than paths or sizes: a regenerated clip has the
+    same name and a very similar size, so anything cheaper would miss exactly
+    the case this is for.
+    """
+    import hashlib
+
+    rows = rows if rows is not None else load_manifest(split)
+    digest = hashlib.sha256()
+    for row in rows:
+        clip = config.data_dir() / row["path"]
+        digest.update(row["query_id"].encode("utf-8"))
+        digest.update(b"|")
+        if clip.is_file():
+            digest.update(clip.read_bytes())
+    return digest.hexdigest()[:16]
 
 
 def _manifest_row(query, condition: str, path: Path, voice: str) -> dict:
@@ -199,6 +233,7 @@ def load_manifest(split: str, condition: str | None = None) -> list[dict]:
         for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    rows = [r for r in rows if not r.get("_meta")]
     if condition is None:
         return rows
     return [r for r in rows if r["condition"] == condition]

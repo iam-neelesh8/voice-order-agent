@@ -229,6 +229,7 @@ def _cmd_export_asr_input(args) -> int:
     path, stats = portable.export_asr_input(args.split, args.condition)
     print(f"{stats['clips']:,} clips -> {path}  ({stats['mb']} MB)")
     print(f"conditions: {', '.join(stats['conditions'])}")
+    print(f"audio fingerprint: {stats['fingerprint']}")
     if stats["missing"]:
         print(f"  ! {stats['missing']:,} manifest rows had no audio file")
     print()

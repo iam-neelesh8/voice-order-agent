@@ -53,13 +53,16 @@ def export_asr_input(
 
     stats: dict = {"clips": 0, "missing": 0, "conditions": sorted({r["condition"] for r in rows})}
 
+    # Fingerprint the clips before packing, so the notebook can carry it
+    # through and the import can prove the transcripts describe this audio.
+    fingerprint = audio_mod.audio_fingerprint(split, rows)
+    header = {"_meta": True, "split": split, "audio_fingerprint": fingerprint}
+
     # Audio is FLAC, already compressed, so storing beats deflating it: the
     # zip is a container here, not a compressor.
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_STORED) as zf:
-        zf.writestr(
-            "manifest.jsonl",
-            "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n",
-        )
+        lines = [json.dumps(header)] + [json.dumps(r, ensure_ascii=False) for r in rows]
+        zf.writestr("manifest.jsonl", "\n".join(lines) + "\n")
         for row in rows:
             clip = config.data_dir() / row["path"]
             if not clip.is_file():
@@ -68,6 +71,7 @@ def export_asr_input(
             zf.write(clip, row["path"])
             stats["clips"] += 1
 
+    stats["fingerprint"] = fingerprint
     stats["path"] = str(path)
     stats["mb"] = round(path.stat().st_size / 1e6, 1)
     return path, stats
@@ -115,6 +119,20 @@ def import_transcripts(source: Path, split: str = "dev") -> list[dict]:
                 "made from a different audio set -- evaluating them here would "
                 "score one query's retrieval against another query's speech."
             )
+
+        # The id check above cannot catch a stale bundle: the queries never
+        # change, only the audio does, so the ids match perfectly while the
+        # transcripts describe recordings that no longer exist here.
+        stamped = {r.get("audio_fingerprint") for r in rows if r.get("audio_fingerprint")}
+        if stamped:
+            local = audio_mod.audio_fingerprint(split)
+            if len(stamped) > 1 or local not in stamped:
+                raise ValueError(
+                    f"{file.name} was transcribed from different audio than the "
+                    f"{split} set on disk (bundle {sorted(stamped)[0]}, local "
+                    f"{local}). Re-run `voice-order export-asr-input` and "
+                    "transcribe the fresh bundle."
+                )
 
         empty = sum(1 for r in rows if not r.get("hypotheses"))
         target = batch.transcripts_path(split, condition, model)

@@ -79,7 +79,13 @@ whether dense earns its place at all.
 **Upload the data**
 
 Same as above, but with `data/exports/asr_dev.zip`, named `voice-order-asr`.
-It is 481 MB, so give the upload a few minutes.
+It is ~456 MB, so give the upload a few minutes.
+
+The bundle carries a fingerprint of the audio it was built from, and the
+import checks it. If you regenerate the audio locally after exporting, run
+`voice-order export-asr-input` again -- otherwise you would spend an hour of
+GPU transcribing recordings that no longer exist on your machine, and the
+`query_id` check alone cannot detect that.
 
 **Run it**
 
@@ -137,7 +143,8 @@ silent — nothing crashes, the answers are just wrong.
 |---|---|---|
 | `index ids diverge from the catalog` | the catalog was reloaded after exporting | re-export, re-run the notebook |
 | `do not match locally computed` | the notebook used a different model | re-run it unmodified |
-| `query_ids that are not in the manifest` | transcripts from a different audio set | re-export the audio bundle |
+| `query_ids that are not in the manifest` | transcripts from a different evalset | re-export the audio bundle |
+| `transcribed from different audio` | the audio was regenerated after you exported the zip | `voice-order export-asr-input`, upload the new zip |
 | `N vectors but M ids` | truncated download | download again |
 
 ## Notes

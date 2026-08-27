@@ -59,11 +59,18 @@ with zipfile.ZipFile(candidates[0]) as zf:
     zf.extractall("audio")
 print("unpacked", candidates[0])
 
-manifest = [
+raw = [
     json.loads(line)
     for line in open("audio/manifest.jsonl", encoding="utf-8")
     if line.strip()
 ]
+# The first line carries a fingerprint of the audio this bundle was built
+# from. It is stamped into every transcript so the import can prove the
+# transcripts and the local audio are the same recordings.
+meta = next((r for r in raw if r.get("_meta")), {})
+AUDIO_FINGERPRINT = meta.get("audio_fingerprint")
+manifest = [r for r in raw if not r.get("_meta")]
+print("audio fingerprint:", AUDIO_FINGERPRINT)
 if CONDITIONS:
     manifest = [r for r in manifest if r["condition"] in CONDITIONS]
 
@@ -132,6 +139,7 @@ for model_name in MODELS:
                             "condition": condition,
                             "model": model_name,
                             "hypotheses": hyps,
+                            "audio_fingerprint": AUDIO_FINGERPRINT,
                             "duration_s": 0.0,
                             "latency_ms": 0.0,
                         }
