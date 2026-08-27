@@ -14,6 +14,8 @@ constructor argument and a rerun -- not a schema change.
 
 from __future__ import annotations
 
+import math
+
 from voice_order import config
 from voice_order.types import Candidate, Transcript
 
@@ -48,6 +50,27 @@ def reciprocal_rank_fusion(
         Candidate(parent_asin=a, score=fused[a], component_scores=components.get(a, {}))
         for a in order
     ]
+
+
+def _hypothesis_weights(scores: list[float], enabled: bool = True) -> list[float]:
+    """Softmax over the ASR's average log-probabilities.
+
+    Equal weights when disabled, which is what the ablation needs. Softmax
+    rather than raw probabilities because the scores are log-probs of very
+    different lengths and their absolute values are not comparable -- only
+    their ordering and spacing carry information.
+    """
+    if not scores:
+        return []
+    if not enabled:
+        return [1.0] * len(scores)
+
+    top = max(scores)
+    exps = [math.exp(s - top) for s in scores]
+    total = sum(exps) or 1.0
+    # Floored, so a hypothesis the model disliked can still win when it is the
+    # only one carrying a usable identifier.
+    return [max(e / total, 0.05) for e in exps]
 
 
 def _parse_retrievers(spec: str | list[str] | None) -> list[str]:
@@ -148,14 +171,62 @@ class Retriever:
             for c in candidates
         ]
 
-    def search_transcript(self, transcript: Transcript, top_k: int = 20) -> list[Candidate]:
+    def search_transcript(
+        self, transcript: Transcript, top_k: int = 20, category: str | None = None
+    ) -> list[Candidate]:
         """Retrieve over every hypothesis and fuse, weighted by ASR score.
 
-        The stage 4/5 eval entry point. With `use_nbest=False` this must reduce
-        *exactly* to `search_text(transcript.best)` -- that equivalence is what
-        makes the stage 5 ablation trustworthy, and it is worth a test.
+        The stage 4/5 eval entry point. With `use_nbest=False` this reduces
+        *exactly* to `search_text(transcript.best)` -- same code path, not a
+        reimplementation -- which is what makes the ablation trustworthy.
+
+        The correct product only has to surface for one hypothesis. Measured on
+        the stage 4 transcripts, the gold identifier is recoverable from the
+        1-best 35.5% of the time and from the union of hypotheses 43.1% -- so
+        roughly a fifth of the remaining identifier losses are sitting in
+        alternatives the retriever never saw.
+
+        Hypotheses are weighted by the ASR's own average log-probability,
+        softmaxed. A hypothesis the model considered unlikely should not
+        outvote the one it preferred, but it should still be able to win when
+        it is the only one carrying a usable identifier.
         """
-        raise NotImplementedError("stage 5")
+        if not self.use_nbest or len(transcript.hypotheses) <= 1:
+            return self.search_text(transcript.best, top_k=top_k, category=category)
+
+        cfg_max = int(self._cfg.get("nbest.max_hypotheses", 5))
+        hypotheses = transcript.hypotheses[:cfg_max]
+        weights = _hypothesis_weights(
+            [h.score for h in hypotheses],
+            enabled=bool(self._cfg.get("nbest.weight_by_asr_score", True)),
+        )
+
+        ranked: dict[str, list[Candidate]] = {}
+        for i, hypothesis in enumerate(hypotheses):
+            per_retriever = self._search_all(hypothesis.text, top_k, category)
+            for name, hits in per_retriever.items():
+                # Tag which hypothesis produced each hit. When a wrong order is
+                # traced back, "which of the five transcripts caused this" is
+                # the first question, and it is unanswerable afterwards unless
+                # it is recorded here.
+                ranked[f"{name}#{i}"] = [
+                    Candidate(
+                        parent_asin=c.parent_asin,
+                        score=c.score,
+                        component_scores=c.component_scores,
+                        matched_hypothesis=hypothesis.text,
+                    )
+                    for c in hits
+                ]
+
+        base = dict(self._cfg.get("fusion.weights", {}))
+        weighted = {
+            key: base.get(key.split("#")[0], 1.0) * weights[int(key.split("#")[1])]
+            for key in ranked
+        }
+        return reciprocal_rank_fusion(
+            ranked, k=int(self._cfg.get("fusion.rrf_k", 60)), weights=weighted
+        )[:top_k]
 
     def confidence(self, candidates: list[Candidate]) -> float:
         """Calibrated 0-1 score for the top candidate.

@@ -1,83 +1,126 @@
-"""Stage 5 -- the module this project exists for.
+"""Stage 5 -- the retriever this project exists for.
 
-Speech destroys identifiers. "41-993" comes back as "forty one dash nine
-ninety three", "41-99 3", "4199 3". Character matching fails on all three.
-So: normalise spoken digits back to figures, strip separators, and fall back
-to a phonetic key when the digits themselves came through wrong.
+Speech destroys identifiers. Stage 4 measured it: 84% word error rate on
+queries carrying a part number against 15% without, and a six-times-larger
+model recovering only 8% of the loss. The digits arrive correct and spelled as
+English, so the fix is orthographic -- `spoken_digits` does that part.
 
-The index is a plain dict of normalised form -> product ids, built from
-`product_part_numbers` and written to `data/index/part_numbers.json`. It is
-small enough to hold in memory and cheap enough to rebuild.
+This module is the other half: an index from normalised identifier straight to
+product id, so a recovered `41993` becomes a retrieval hit rather than a token
+BM25 has to compete over.
 
-This whole retriever is switched off by default so that stages 2 and 4
-measure a clean baseline. Stage 5 turns each of its three pieces on
-separately -- see `Retriever` in fusion.py.
+Why a separate retriever rather than better tokenisation in BM25: an
+identifier is not evidence, it is an answer. When a caller says a part number
+correctly there is exactly one right product, and a scoring function that
+weighs it against title words will sometimes rank something else first. BM25
+gets `brand_id` to 0.919 on typed text and this should get it higher, because
+an exact identifier match is not a similarity judgement at all.
+
+Kept behind `retrieval.part_number.enabled` so stages 2 and 4 measure a clean
+baseline without it, and so the stage 5 ablation can turn it off.
 """
 
 from __future__ import annotations
 
+import json
+from collections import defaultdict
 from pathlib import Path
 
+from voice_order import config
+from voice_order.retrieval.spoken_digits import candidates
 from voice_order.types import Candidate
 
 INDEX_FILE = "part_numbers.json"
 
-
-def spoken_digits_to_figures(text: str) -> str:
-    """"forty one dash nine ninety three" -> "41-993".
-
-    Handles the ways ASR writes numbers out: word digits, tens compounds
-    ("ninety three"), "double seven", "oh" and "o" for zero, and
-    "dash"/"hyphen"/"slash" for separators.
-
-    This is the single highest-leverage function in the project. Get it wrong
-    and stage 5 shows no improvement for reasons that have nothing to do with
-    retrieval.
-    """
-    raise NotImplementedError("stage 5")
-
-
-def candidate_part_numbers(text: str) -> list[str]:
-    """Every substring of an utterance that could plausibly be an identifier.
-
-    Over-generates on purpose. A false candidate costs one dict lookup; a
-    missed one costs the turn.
-    """
-    raise NotImplementedError("stage 5")
-
-
-def phonetic_key(token: str) -> str:
-    """Metaphone key, so B/V/P and M/N confusions still collide."""
-    raise NotImplementedError("stage 5")
+# An identifier that maps to this many products is not identifying anything.
+# Measured on the catalog: a handful of short numerics like "1000" collide
+# across hundreds of items, and matching all of them is worse than matching
+# none -- it buries the real answer under noise it cannot be ranked out of.
+MAX_PRODUCTS_PER_IDENTIFIER = 25
 
 
 class PartNumberIndex:
-    """Normalised identifier -> product ids, plus a phonetic bucket map."""
+    """Normalised identifier -> product ids. A dictionary, not a ranker."""
 
-    def __init__(self, exact: dict[str, list[str]], phonetic: dict[str, list[str]]) -> None:
-        raise NotImplementedError("stage 5")
+    def __init__(self, exact: dict[str, list[str]]) -> None:
+        self.exact = exact
+
+    def __len__(self) -> int:
+        return len(self.exact)
 
     @classmethod
     def build(cls, index_dir: Path | None = None) -> "PartNumberIndex":
-        raise NotImplementedError("stage 5")
+        """Read `product_part_numbers` into a dict and save it.
+
+        Identifiers shared by more than `MAX_PRODUCTS_PER_IDENTIFIER` products
+        are dropped at build time rather than filtered at query time, so the
+        cost is paid once and the index stays small.
+        """
+        from voice_order.db.session import connect
+
+        target = Path(index_dir or config.index_dir())
+        target.mkdir(parents=True, exist_ok=True)
+
+        exact: dict[str, list[str]] = defaultdict(list)
+        with connect(readonly=True) as conn:
+            for row in conn.execute(
+                "SELECT part_number, parent_asin FROM product_part_numbers"
+            ):
+                exact[row["part_number"]].append(row["parent_asin"])
+
+        dropped = [k for k, v in exact.items() if len(v) > MAX_PRODUCTS_PER_IDENTIFIER]
+        for key in dropped:
+            del exact[key]
+
+        payload = {"exact": exact, "dropped_ambiguous": len(dropped)}
+        (target / INDEX_FILE).write_text(json.dumps(payload), encoding="utf-8")
+        return cls(dict(exact))
 
     @classmethod
     def load(cls, index_dir: Path | None = None) -> "PartNumberIndex":
-        raise NotImplementedError("stage 5")
+        target = Path(index_dir or config.index_dir()) / INDEX_FILE
+        if not target.is_file():
+            raise FileNotFoundError(
+                f"no part-number index at {target} -- run "
+                "`voice-order index part-number`"
+            )
+        payload = json.loads(target.read_text(encoding="utf-8"))
+        return cls(payload["exact"])
 
     def search(
         self, query: str, top_k: int = 50, category: str | None = None
     ) -> list[Candidate]:
-        """Match extracted identifiers against the index, in tiers.
+        """Pull every identifier out of the utterance and look each one up.
 
         `category` is accepted so every retriever presents the same interface
-        to `fusion`. Fusion calls all of them identically, and a retriever that
-        quietly omitted the argument would raise the moment stage 5 switched
-        it on.
+        to `fusion`; it is not used, because an identifier match is already
+        specific enough that narrowing it by category cannot help and could
+        only discard the right answer.
 
-        Exact normalised match scores highest, then edit-distance 1, then
-        phonetic. Which tier fired is recorded in `Candidate.component_scores`
-        so the stage 5 ablation can attribute wins to a specific mechanism
-        rather than to "the part number thing".
+        Scores are 1.0 for an exact hit, divided by how many products share
+        that identifier. A code matching one product is worth more than one
+        matching twelve, and that is a property of the match rather than a
+        tuned weight.
         """
-        raise NotImplementedError("stage 5")
+        found: list[Candidate] = []
+        seen: set[str] = set()
+
+        for token in candidates(query):
+            asins = self.exact.get(token)
+            if not asins:
+                continue
+            score = 1.0 / len(asins)
+            for asin in asins:
+                if asin in seen:
+                    continue
+                seen.add(asin)
+                found.append(
+                    Candidate(
+                        parent_asin=asin,
+                        score=score,
+                        component_scores={"part_number": score, "matched": token},
+                    )
+                )
+
+        found.sort(key=lambda c: c.score, reverse=True)
+        return found[:top_k]

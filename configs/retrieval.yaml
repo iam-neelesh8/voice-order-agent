@@ -33,7 +33,11 @@ dense:
 part_number:
   # Stage 5. Off for the stage 2/4 baseline, then each piece enabled
   # separately so the ablation can attribute the win.
-  enabled: false
+  # MEASURED on the dev set, phone condition, small.en, recall@1 on queries
+  # carrying an identifier: 0.226 baseline -> 0.328 with this on. It is the
+  # single largest win in the project, ahead of upgrading small.en to
+  # large-v3 (+0.048 on the same slice, for 4.4 GPU-hours).
+  enabled: true
   normalise_spoken_digits: true   # "forty one dash nine ninety three" -> 41-993
   strip_separators: true          # 41-993 == 41 993, but AC41993 stays distinct
   phonetic: metaphone             # metaphone | soundex | none
@@ -47,7 +51,20 @@ fusion:
 
 nbest:
   # Stage 5. Retrieve over every ASR hypothesis, not just the top one.
-  # With this off, search_transcript must reduce exactly to searching 1-best.
-  enabled: false
+  # With this off, search_transcript reduces exactly to searching 1-best --
+  # the same code path, which is what makes the ablation trustworthy.
+  #
+  # ONLY USEFUL ALONGSIDE part_number. Measured on the dev set, recall@1:
+  #
+  #   lexical only              0.212
+  #   + n-best only             0.180   <- worse
+  #   + part_number             0.263
+  #   + part_number + n-best    0.264   (0.328 -> 0.352 on identifier queries)
+  #
+  # On its own it hurts: four wrong transcripts outvote one right one under
+  # rank-based fusion. It pays off only next to a retriever that turns a single
+  # correct hypothesis into a definitive hit, which exact identifier matching
+  # is and BM25 is not.
+  enabled: true
   max_hypotheses: 5
   weight_by_asr_score: true
