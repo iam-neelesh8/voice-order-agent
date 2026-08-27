@@ -16,7 +16,19 @@ from voice_order import config
 
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
-TABLES = ("products", "product_part_numbers", "calls", "carts", "orders")
+TABLES = (
+    "products", "product_part_numbers", "inventory",
+    "customers", "calls", "carts", "order_headers", "order_lines", "orders",
+)
+
+# Columns added after the first schema shipped. SQLite has no
+# "ADD COLUMN IF NOT EXISTS", and a database built before these existed should
+# not have to be rebuilt from 100k rows to gain one nullable column.
+_ADDED_COLUMNS = (
+    # Whether a price came from the catalog or was invented by `seed`. Without
+    # it, 42% of the catalog would silently look like real Amazon pricing.
+    ("products", "price_source", "TEXT"),
+)
 
 # PRAGMAs are per-connection, not stored in the file, so schema.sql setting
 # them is not enough -- every connection has to reapply them.
@@ -63,6 +75,10 @@ def init_schema() -> Path:
     sql = SCHEMA_PATH.read_text(encoding="utf-8")
     with connect() as conn:
         conn.executescript(sql)
+        for table, column, decl in _ADDED_COLUMNS:
+            existing = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
     return config.database_path()
 
 

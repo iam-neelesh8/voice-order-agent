@@ -20,6 +20,10 @@ def build_parser() -> argparse.ArgumentParser:
     cat = sub.add_parser("catalog", help="stage 1 - build the product catalog")
     cat.add_argument("--force", action="store_true")
 
+    sd = sub.add_parser("seed",
+                        help="stage 1 - invent the shop data Amazon does not carry")
+    sd.add_argument("--seed", type=int, default=20260827)
+
     # stage 2
     idx = sub.add_parser("index", help="stage 2 - build retrieval indexes")
     idx.add_argument("which", nargs="?", default="all",
@@ -133,6 +137,13 @@ def _cmd_catalog(args) -> int:
 
     stats = load.build_catalog(force=args.force)
     load.report(stats)
+    return 0
+
+
+def _cmd_seed(args) -> int:
+    from voice_order.catalog import seed
+
+    seed.report(seed.seed_all(args.seed))
     return 0
 
 
@@ -348,6 +359,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_db(args)
     if args.command == "catalog":
         return _cmd_catalog(args)
+    if args.command == "seed":
+        return _cmd_seed(args)
     if args.command == "index":
         return _cmd_index(args)
     if args.command == "eval":

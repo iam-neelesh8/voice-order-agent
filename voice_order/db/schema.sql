@@ -46,6 +46,80 @@ CREATE TABLE IF NOT EXISTS product_part_numbers (
 
 CREATE INDEX IF NOT EXISTS ppn_number_idx ON product_part_numbers (part_number);
 
+-- ------------------------------------------------- the shop around it --
+--
+-- None of this comes from Amazon. It is what a parts counter needs and the
+-- catalog does not carry: who is calling, whether the thing is on the shelf,
+-- and what an order is as opposed to a list of items.
+--
+-- Seeded by `voice-order seed`, which marks everything it invents so nothing
+-- here is ever mistaken for real data.
+
+CREATE TABLE IF NOT EXISTS customers (
+    customer_id  TEXT PRIMARY KEY,
+    -- The natural key. A caller gives a phone number, not an id, and it is
+    -- how a returning customer is recognised.
+    phone        TEXT NOT NULL UNIQUE,
+    name         TEXT,
+    kind         TEXT NOT NULL DEFAULT 'retail'
+                 CHECK (kind IN ('retail', 'trade')),
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+    parent_asin    TEXT PRIMARY KEY REFERENCES products (parent_asin) ON DELETE CASCADE,
+    on_hand        INTEGER NOT NULL DEFAULT 0,
+    reorder_level  INTEGER NOT NULL DEFAULT 2,
+    location       TEXT NOT NULL DEFAULT 'MAIN',
+    updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS inventory_on_hand_idx ON inventory (on_hand);
+
+-- An order is a thing that happened, with a customer and a total. The old
+-- `orders` table had one row per item and no header, so three items were
+-- three unrelated rows and "this order came to $47.20" could not be said.
+CREATE TABLE IF NOT EXISTS order_headers (
+    order_id     TEXT PRIMARY KEY,
+    call_id      TEXT REFERENCES calls (call_id),
+    customer_id  TEXT REFERENCES customers (customer_id),
+    status       TEXT NOT NULL DEFAULT 'placed'
+                 CHECK (status IN ('placed', 'picking', 'shipped', 'cancelled')),
+    subtotal     REAL NOT NULL DEFAULT 0,
+    tax          REAL NOT NULL DEFAULT 0,
+    total        REAL NOT NULL DEFAULT 0,
+    -- How much of the total is real. The catalog cannot price 42% of itself,
+    -- and an order that is half estimated must say so on its face.
+    unpriced_lines INTEGER NOT NULL DEFAULT 0,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS order_headers_customer_idx ON order_headers (customer_id);
+CREATE INDEX IF NOT EXISTS order_headers_call_idx ON order_headers (call_id);
+
+CREATE TABLE IF NOT EXISTS order_lines (
+    order_id      TEXT NOT NULL REFERENCES order_headers (order_id) ON DELETE CASCADE,
+    line_no       INTEGER NOT NULL,
+    parent_asin   TEXT NOT NULL REFERENCES products (parent_asin),
+    quantity      INTEGER NOT NULL CHECK (quantity > 0),
+    -- Copied at order time. A price that changes later must not silently
+    -- rewrite what somebody already agreed to pay.
+    unit_price    REAL,
+    subtotal      REAL,
+
+    -- The trace stays on the line, because it is per item: this is the
+    -- utterance and the candidates that put THIS product on the order.
+    query_text    TEXT,
+    nbest         TEXT NOT NULL DEFAULT '[]',
+    candidates    TEXT NOT NULL DEFAULT '[]',
+    confidence    REAL,
+    was_confirmed INTEGER NOT NULL DEFAULT 0,
+
+    PRIMARY KEY (order_id, line_no)
+);
+
+CREATE INDEX IF NOT EXISTS order_lines_asin_idx ON order_lines (parent_asin);
+
 -- ---------------------------------------------------------------- stage 6 --
 
 CREATE TABLE IF NOT EXISTS calls (
