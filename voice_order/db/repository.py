@@ -11,10 +11,11 @@ Stage 1 for products; stage 6 for calls, carts and orders.
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Iterable, Iterator, Sequence
 
 from voice_order.db.session import connect
-from voice_order.types import Candidate, Cart, Product, Transcript, Turn
+from voice_order.types import Product
 
 # SQLite's default bound-parameter ceiling is well above this; 500 keeps the
 # statement readable and is comfortably inside every version's limit.
@@ -226,32 +227,116 @@ def part_number_sources() -> dict[str, int]:
 # ------------------------------------------------------------------ stage 6 --
 
 
-def open_call(audio_path: str | None) -> str:
+def open_call(audio_path: str | None = None, asr_model: str | None = None) -> str:
     """Create a `calls` row, return its call_id."""
-    raise NotImplementedError("stage 6")
+    call_id = str(uuid.uuid4())
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO calls (call_id, audio_path, asr_model) VALUES (?, ?, ?)",
+            (call_id, audio_path, asr_model),
+        )
+    return call_id
 
 
-def append_turn(call_id: str, turn: Turn) -> None:
-    """Append one traced turn to `calls.turns`."""
-    raise NotImplementedError("stage 6")
+def append_turn(call_id: str, turn: dict) -> None:
+    """Append one traced turn to `calls.turns`.
+
+    Read-modify-write rather than a turns table: a call has a handful of turns,
+    they are only ever read back whole, and keeping them as one JSON blob means
+    the trace travels with the call row.
+    """
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT turns FROM calls WHERE call_id = ?", (call_id,)
+        ).fetchone()
+        if row is None:
+            raise KeyError(f"no call {call_id!r}")
+        turns = json.loads(row["turns"] or "[]")
+        turns.append(turn)
+        conn.execute(
+            "UPDATE calls SET turns = ? WHERE call_id = ?", (_dumps(turns), call_id)
+        )
 
 
-def save_cart(cart: Cart) -> None:
-    raise NotImplementedError("stage 6")
+def close_call(call_id: str, total_latency_ms: int | None = None) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE calls SET ended_at = datetime('now'), total_latency_ms = ? "
+            "WHERE call_id = ?",
+            (total_latency_ms, call_id),
+        )
+
+
+def save_cart(call_id: str, lines: list[dict], status: str = "open") -> str:
+    """Persist the in-progress cart so an interrupted call is recoverable."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT cart_id FROM carts WHERE call_id = ? AND status = 'open'",
+            (call_id,),
+        ).fetchone()
+        cart_id = row["cart_id"] if row else str(uuid.uuid4())
+        if row:
+            conn.execute(
+                "UPDATE carts SET lines = ?, status = ?, "
+                "updated_at = datetime('now') WHERE cart_id = ?",
+                (_dumps(lines), status, cart_id),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO carts (cart_id, call_id, status, lines) VALUES (?, ?, ?, ?)",
+                (cart_id, call_id, status, _dumps(lines)),
+            )
+    return cart_id
 
 
 def commit_order(
     call_id: str,
     parent_asin: str,
     quantity: int,
-    transcript: Transcript,
-    candidates: list[Candidate],
-    confidence: float,
-    was_confirmed: bool,
+    query_text: str = "",
+    nbest: list | None = None,
+    candidates: list | None = None,
+    confidence: float | None = None,
+    was_confirmed: bool = False,
 ) -> str:
-    """Write an order *with its trace*. Never call this without candidates.
+    """Write an order *with its trace*.
 
-    The signature is deliberately awkward: it is not possible to record an
-    order here without also recording what produced it.
+    The trace arguments are plain data rather than objects so this stays the
+    only module that knows about rows -- and so a trace can be written even
+    when the order came from typed input with no audio behind it.
+
+    Without these columns a wrong order teaches nothing: there is no way to
+    tell afterwards whether the ASR or the search was at fault.
     """
-    raise NotImplementedError("stage 6")
+    order_id = str(uuid.uuid4())
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO orders
+                (order_id, call_id, parent_asin, quantity, query_text,
+                 nbest, candidates, confidence, was_confirmed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                order_id,
+                call_id,
+                parent_asin,
+                quantity,
+                query_text,
+                _dumps(nbest or []),
+                _dumps(candidates or []),
+                confidence,
+                1 if was_confirmed else 0,
+            ),
+        )
+    return order_id
+
+
+def orders_for_call(call_id: str) -> list[dict]:
+    with connect(readonly=True) as conn:
+        return [
+            dict(r)
+            for r in conn.execute(
+                "SELECT * FROM orders WHERE call_id = ? ORDER BY created_at", (call_id,)
+            )
+        ]

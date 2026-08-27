@@ -86,8 +86,12 @@ def build_parser() -> argparse.ArgumentParser:
                      help="skip the model-match check (not recommended)")
 
     # stages 6-7
-    call = sub.add_parser("call", help="stage 6/7 - run the agent")
+    call = sub.add_parser("call", help="stage 6/7 - take an order")
+    call.add_argument("--text", action="store_true",
+                      help="type at it instead of speaking (stage 6)")
     call.add_argument("--audio", help="recorded call; omit for live mic (stage 7)")
+    call.add_argument("--no-save", action="store_true",
+                      help="do not write the call or order to the database")
 
     return p
 
@@ -290,6 +294,20 @@ def _cmd_import_embeddings(args) -> int:
     return 0
 
 
+def _cmd_call(args) -> int:
+    from voice_order.agent.loop import OrderAgent
+
+    if not args.text:
+        raise NotImplementedError(
+            "voice calls arrive in stage 7. Use `voice-order call --text` to "
+            "type at the agent -- it exercises the whole conversation."
+        )
+
+    agent = OrderAgent(persist=not args.no_save)
+    agent.run_text()
+    return 0
+
+
 def _cmd_query(args) -> int:
     from voice_order.retrieval.fusion import Retriever
 
@@ -327,6 +345,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_import_embeddings(args)
     if args.command == "query":
         return _cmd_query(args)
+    if args.command == "call":
+        return _cmd_call(args)
 
     raise NotImplementedError(
         f"{args.command}: not built yet -- see docs/ARCHITECTURE.md for the stage it belongs to"

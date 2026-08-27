@@ -1,34 +1,93 @@
-"""Stages 6 and 7 — the dialogue loop.
+"""Stage 6 -- one call, start to hang-up.
 
-    audio in -> ASR -> intent -> retrieval -> policy -> reply -> audio out
+Typed input first, deliberately. The whole conversation -- search, cart,
+confirmation, total, placing the order -- is exercised by typing, with no
+microphone, no ASR and no TTS in the way. When something goes wrong it is
+obvious which layer owns it.
 
-Every pass writes a traced `Turn`. That trace is the whole point: without it
-a wrong order is just a shrug.
+Voice bolts on at stage 7 by replacing `input()` with the transcriber and
+`print()` with Piper. Nothing else changes.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from voice_order.types import Transcript, Turn
+from voice_order.agent.brain import Brain
+from voice_order.agent.state import OrderSession, State
 
 
 class OrderAgent:
-    def __init__(self, call_id: str | None = None) -> None:
-        raise NotImplementedError("stage 6")
+    """A single call."""
 
-    def handle_utterance(self, transcript: Transcript) -> Turn:
-        """One full turn, text in. Stage 6 — testable without any audio."""
-        raise NotImplementedError("stage 6")
+    def __init__(self, client=None, retriever=None, persist: bool = True) -> None:
+        from voice_order.db import repository
+        from voice_order.llm.client import from_config
 
-    def run_file(self, audio_path: Path) -> list[Turn]:
-        """Batch: a recorded call in, traced turns out. Stage 6."""
-        raise NotImplementedError("stage 6")
+        self.session = OrderSession()
+        self.session._retriever = retriever or self._default_retriever()
+        self.brain = Brain(client or from_config(), self.session)
+        self.persist = persist
 
-    def run_live(self) -> None:
-        """Microphone in, speaker out, with barge-in. Stage 7."""
-        raise NotImplementedError("stage 7")
+        if persist:
+            self.session.call_id = repository.open_call()
+
+    @staticmethod
+    def _default_retriever():
+        from voice_order.retrieval.fusion import Retriever
+
+        return Retriever.load(retrievers="lexical")
+
+    def greeting(self) -> str:
+        self.session.state = State.LISTENING
+        return self.brain.greeting()
+
+    def handle(self, utterance: str) -> str:
+        """One caller utterance in, one agent reply out. Traced."""
+        reply = self.brain.say(utterance)
+
+        if self.persist:
+            from voice_order.db import repository
+
+            repository.append_turn(
+                self.session.call_id,
+                {
+                    "said": utterance,
+                    "reply": reply,
+                    "tools": self.brain.tool_log[-1] if self.brain.tool_log else {},
+                    "cart": self.session.read_cart(),
+                },
+            )
+            repository.save_cart(self.session.call_id, self.session.read_cart()["lines"])
+        return reply
 
     def close(self) -> list[str]:
-        """Commit the cart to `orders`. Returns order ids."""
-        raise NotImplementedError("stage 6")
+        if self.persist:
+            from voice_order.db import repository
+
+            repository.close_call(self.session.call_id)
+        return self.session.placed_order_ids
+
+    # ------------------------------------------------------------ drivers --
+
+    def run_text(self) -> None:
+        """Type at it. The stage 6 way to use this."""
+        print(f"agent: {self.greeting()}")
+        try:
+            while self.session.state is not State.CLOSED:
+                said = input("you:   ").strip()
+                if not said:
+                    continue
+                if said.lower() in {"quit", "exit", "hangup"}:
+                    break
+                print(f"agent: {self.handle(said)}")
+        except (EOFError, KeyboardInterrupt):
+            print()
+        finally:
+            orders = self.close()
+            if orders:
+                print(f"\n[{len(orders)} order line(s) written, call {self.session.call_id[:8]}]")
+            else:
+                print(f"\n[no order placed, call {self.session.call_id[:8]}]")
+
+    def run_live(self) -> None:
+        """Microphone in, speaker out. Stage 7."""
+        raise NotImplementedError("stage 7")
