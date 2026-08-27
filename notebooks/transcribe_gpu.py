@@ -52,53 +52,59 @@ N_BEST = 5                                # 1 is ~5x faster and enough for stage
 
 # --- locate and unpack the bundle -------------------------------------------
 
-# Kaggle DECOMPRESSES uploads: a .zip arrives already extracted, as a folder.
-# So look for the manifest first -- if it is there, the bundle is unpacked and
-# there is no zip to open. Searching only for the zip finds nothing and falls
-# into a recursive walk of 10,000 audio files, which looks exactly like a hang.
+# Kaggle both decompresses uploads and nests them unpredictably: a .zip
+# arrives already extracted, and the dataset may sit at /kaggle/input/<slug>/
+# or /kaggle/input/datasets/<user>/<slug>/. Searching by filename with an
+# early exit is immune to all of that; a glob written for one layout is not.
 
-AUDIO_ROOT = None
 
-manifest_hits: list[str] = []
-for pattern in (
-    "/kaggle/input/*/manifest.jsonl",
-    "/kaggle/input/*/*/manifest.jsonl",
-    "./audio/manifest.jsonl",
-):
-    manifest_hits += glob.glob(pattern)
+def find_file(names, roots=("/kaggle/input", "/kaggle/working", ".", "/content")):
+    wanted = set(names)
+    skip = {"clean", "phone", "phone_snr5", "phone_snr10", "phone_snr20"}
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in skip]
+            for filename in filenames:
+                if filename in wanted:
+                    return os.path.join(dirpath, filename)
+    return None
 
-if manifest_hits:
-    AUDIO_ROOT = os.path.dirname(manifest_hits[0])
+
+print("looking for the audio bundle ...", flush=True)
+
+# The manifest first: if it is there the bundle is already extracted and there
+# is no archive to open.
+manifest_path = find_file(("manifest.jsonl",))
+
+if manifest_path:
+    AUDIO_ROOT = os.path.dirname(manifest_path)
     print(f"bundle already extracted at {AUDIO_ROOT}", flush=True)
 else:
-    zips: list[str] = []
-    for pattern in ("/kaggle/input/*/asr_*.zip", "/kaggle/input/*/*/asr_*.zip",
-                    "./asr_*.zip", "/content/asr_*.zip"):
-        zips += glob.glob(pattern)
-
-    if not zips:
+    archive = find_file(("asr_dev.zip", "asr_test.zip"))
+    if archive is None:
+        print("nothing found. What IS attached:", flush=True)
+        for dirpath, _d, filenames in os.walk("/kaggle/input"):
+            if filenames:
+                print(f"   {dirpath} -> {filenames[:6]}"
+                      f"{' ...' if len(filenames) > 6 else ''}", flush=True)
         try:
             from google.colab import files
 
             files.upload()
-            zips = glob.glob("asr_*.zip")
+            archive = find_file(("asr_dev.zip",))
         except ImportError:
             pass
-
-    if not zips:
-        print("nothing found. What IS attached:", flush=True)
-        for root, _dirs, fs in os.walk("/kaggle/input"):
-            if root.count("/") - 2 <= 2:
-                print(f"   {root} -> {fs[:6]}{' ...' if len(fs) > 6 else ''}", flush=True)
+    if archive is None:
         raise SystemExit(
-            "No asr_*.zip and no manifest.jsonl. Upload data/exports/asr_dev.zip; "
-            "note that Kaggle extracts it, so it appears as a folder."
+            "No manifest.jsonl and no asr_*.zip -- see the listing above. "
+            "Add Data -> Upload data/exports/asr_dev.zip."
         )
-
-    with zipfile.ZipFile(zips[0]) as zf:
+    with zipfile.ZipFile(archive) as zf:
         zf.extractall("audio")
     AUDIO_ROOT = "audio"
-    print("unpacked", zips[0], flush=True)
+    print("unpacked", archive, flush=True)
 
 raw = [
     json.loads(line)

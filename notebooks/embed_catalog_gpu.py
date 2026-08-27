@@ -61,45 +61,56 @@ if "CUDAExecutionProvider" not in providers:
 
 # --- locate the export -------------------------------------------------------
 
+def find_input(names, roots=("/kaggle/input", "/kaggle/working", ".", "/content")):
+    """Find the first file matching any of `names`, wherever it landed.
+
+    Guessing at Kaggle's directory layout has now failed twice: uploads have
+    turned up at /kaggle/input/<slug>/ and at
+    /kaggle/input/datasets/<user>/<slug>/, and a glob written for one misses
+    the other and then silently searches nothing useful.
+
+    os.walk with an early exit is both faster than a recursive glob and immune
+    to the layout, because it matches on the filename rather than the path.
+    Directories of audio are skipped -- the ASR bundle is ~10,000 files and
+    none of them is what we are looking for.
+    """
+    wanted = set(names)
+    skip = {"clean", "phone", "phone_snr5", "phone_snr10", "phone_snr20"}
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in skip]
+            for filename in filenames:
+                if filename in wanted:
+                    return os.path.join(dirpath, filename)
+    return None
+
+
 log("looking for the upload ...")
+source = find_input(("embed_input.jsonl.gz", "embed_input.jsonl"))
 
-# Kaggle DECOMPRESSES uploads. A .gz arrives as a plain .jsonl with no
-# extension to tell you, so both names have to be searched -- looking only for
-# the name you uploaded finds nothing and falls into a recursive walk of every
-# attached dataset, which looks exactly like a hang.
-NAMES = ("embed_input.jsonl.gz", "embed_input.jsonl")
-
-candidates: list[str] = []
-for name in NAMES:
-    for pattern in (
-        f"/kaggle/input/*/{name}",
-        f"/kaggle/input/*/*/{name}",
-        f"./{name}",
-        f"/content/{name}",
-    ):
-        candidates += glob.glob(pattern)
-
-if not candidates:
-    log("  not in the usual places; listing what IS attached:")
-    for root, _dirs, files in os.walk("/kaggle/input"):
-        if root.count("/") - 2 <= 2:
-            log(f"    {root}  ->  {files[:6]}{' ...' if len(files) > 6 else ''}")
+if source is None:
+    log("  not found. What IS attached:")
+    for dirpath, _dirnames, filenames in os.walk("/kaggle/input"):
+        if filenames:
+            log(f"    {dirpath}  ->  {filenames[:6]}"
+                f"{' ...' if len(filenames) > 6 else ''}")
     try:                                     # Colab: prompt for the upload
         from google.colab import files as colab_files
 
         colab_files.upload()
-        candidates = [f for n in NAMES for f in glob.glob(n)]
+        source = find_input(("embed_input.jsonl.gz", "embed_input.jsonl"))
     except ImportError:
         pass
 
-if not candidates:
+if source is None:
     raise SystemExit(
-        "embed_input.jsonl(.gz) not found -- see the listing above for what is "
-        "actually attached. On Kaggle: Add Data -> Upload the file, and note "
-        "that Kaggle decompresses it, so it appears without the .gz."
+        "embed_input.jsonl(.gz) not found -- see the listing above. Add Data -> "
+        "Upload data/exports/embed_input.jsonl.gz. Note that Kaggle "
+        "decompresses it, so it appears without the .gz."
     )
 
-source = candidates[0]
 log(f"reading {source}")
 
 # --- read ids and texts ------------------------------------------------------
