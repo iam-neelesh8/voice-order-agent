@@ -63,6 +63,8 @@ class OrderSession:
     # without the model ever holding a catalog reference.
     _retriever: object | None = None
     _last_results: dict[str, Candidate] = field(default_factory=dict)
+    # Cleared by every cart change, set by read_cart. Gates place_order.
+    _total_read_since_change: bool = False
 
     # ------------------------------------------------------------- search --
 
@@ -138,14 +140,16 @@ class OrderSession:
         for line in self.lines:
             if line.product_id == product_id:
                 line.quantity = min(line.quantity + quantity, 99)
+                self._total_read_since_change = False
                 return {"ok": True, "note": "already on the order, quantity increased",
-                        **self.read_cart()}
+                        **self._snapshot()}
 
         self.lines.append(
             Line(product_id=product_id, name=name[:120], unit_price=price, quantity=quantity)
         )
+        self._total_read_since_change = False
         self.state = State.LISTENING
-        return {"ok": True, **self.read_cart()}
+        return {"ok": True, **self._snapshot()}
 
     def _lookup(self, product_id: str):
         from voice_order.db import repository
@@ -157,17 +161,29 @@ class OrderSession:
         if line is None:
             return {"error": f"there is no line {line_number}. Call read_cart first."}
         line.quantity = quantity
-        return {"ok": True, **self.read_cart()}
+        self._total_read_since_change = False
+        return {"ok": True, **self._snapshot()}
 
     def remove(self, line_number: int) -> dict:
         line = self._find(line_number)
         if line is None:
             return {"error": f"there is no line {line_number}. Call read_cart first."}
         self.lines.remove(line)
-        return {"ok": True, **self.read_cart()}
+        self._total_read_since_change = False
+        return {"ok": True, **self._snapshot()}
 
     def read_cart(self) -> dict:
-        """The order as it stands, with a total computed here and nowhere else."""
+        """The order as it stands. The tool the model calls.
+
+        Records that the total has been produced since the last change, which
+        is what `place_order` requires. Internal callers use `_snapshot`
+        instead -- `add` returning the cart is not the caller hearing it.
+        """
+        self._total_read_since_change = True
+        return self._snapshot()
+
+    def _snapshot(self) -> dict:
+        """The cart as data, with the total computed here and nowhere else."""
         priced = [line for line in self.lines if line.unit_price is not None]
         total = round(sum(line.subtotal or 0.0 for line in priced), 2)
         unpriced = len(self.lines) - len(priced)
@@ -200,6 +216,19 @@ class OrderSession:
         if not self.lines:
             return {"error": "the order is empty -- nothing to place"}
 
+        # The caller must have heard the total. A prompt can ask the model to
+        # read it back; this makes it so. Without it a model that mistakes
+        # "yes, go ahead" for agreement to a total it never said would place
+        # an order nobody agreed to the price of -- which is the one mistake
+        # here that costs somebody money.
+        if not self._total_read_since_change:
+            return {
+                "error": (
+                    "read_cart first, tell the caller the items and the total, "
+                    "and wait for them to agree before placing the order."
+                )
+            }
+
         from voice_order.db import repository
 
         order_ids = []
@@ -218,5 +247,5 @@ class OrderSession:
             )
         self.placed_order_ids = order_ids
         self.state = State.CLOSED
-        summary = self.read_cart()
+        summary = self._snapshot()
         return {"ok": True, "order_ids": order_ids, "total": summary["total"]}

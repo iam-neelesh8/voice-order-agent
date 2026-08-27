@@ -10,7 +10,7 @@
 # cannot widen what the agent is allowed to do.
 llm:
   base_url: http://localhost:11434/v1
-  model: qwen2.5:7b-instruct
+  model: qwen2.5:3b-instruct
   api_key_env: null
   # Zero on purpose. A phone order is not a place for creative variance, and
   # it makes a failing conversation reproducible.

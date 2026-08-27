@@ -261,3 +261,65 @@ def test_readback_does_not_recite_the_catalog_title():
 
     assert len(spoken) < 60
     assert spoken.startswith("2 ")
+
+
+# ------------------------------------------------- placing the order safely --
+
+
+def test_an_order_cannot_be_placed_before_the_total_is_read(session):
+    """The one mistake here that costs somebody money.
+
+    A model that reads "yes, go ahead" as agreement to a total it never said
+    would otherwise place an order at a price the caller never heard. The
+    prompt asks; this makes it so.
+    """
+    session.search("spark plug")
+    tool_defs.execute("add_to_cart", {"product_id": "B001", "quantity": 2}, session)
+
+    result = tool_defs.execute("place_order", {}, session)
+
+    assert "error" in result
+    assert "read_cart" in result["error"]
+    assert session.placed_order_ids == []
+
+
+def test_reading_the_cart_unlocks_placing_it(session, monkeypatch):
+    recorded = []
+    monkeypatch.setattr(
+        "voice_order.db.repository.commit_order",
+        lambda **kw: recorded.append(kw) or "order-1",
+    )
+
+    session.search("spark plug")
+    tool_defs.execute("add_to_cart", {"product_id": "B001", "quantity": 2}, session)
+    tool_defs.execute("read_cart", {}, session)
+
+    result = tool_defs.execute("place_order", {}, session)
+
+    assert result["ok"] is True
+    assert len(recorded) == 1
+    assert recorded[0]["quantity"] == 2
+
+
+def test_changing_the_cart_after_reading_it_locks_it_again(session):
+    """The caller agreed to a total for a different basket."""
+    session.search("spark plug")
+    tool_defs.execute("add_to_cart", {"product_id": "B001", "quantity": 1}, session)
+    tool_defs.execute("read_cart", {}, session)
+
+    tool_defs.execute("change_quantity", {"line_number": 1, "quantity": 5}, session)
+
+    assert "error" in tool_defs.execute("place_order", {}, session)
+
+
+def test_adding_returns_the_cart_without_counting_as_reading_it(session):
+    """add_to_cart echoes the cart back. That is not the caller hearing it.
+
+    Regression: the reset was written one line above a `read_cart()` call that
+    promptly set the flag back to True, so the guard never fired.
+    """
+    session.search("spark plug")
+    result = tool_defs.execute("add_to_cart", {"product_id": "B001"}, session)
+
+    assert "total" in result                       # the model still sees it
+    assert session._total_read_since_change is False
