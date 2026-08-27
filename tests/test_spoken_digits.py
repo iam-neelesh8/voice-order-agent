@@ -16,7 +16,6 @@ import pytest
 
 from voice_order.retrieval.spoken_digits import candidates, spoken_to_digits
 
-
 # ------------------------------------------------------------- rewriting --
 
 
