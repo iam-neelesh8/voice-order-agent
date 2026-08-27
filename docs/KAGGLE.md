@@ -142,6 +142,27 @@ The drop from **0.576** is the headline result of the project.
 
 ---
 
+## If a cell runs for a long time with no new output
+
+Every step in both notebooks now prints a timestamp, so the last line tells
+you where it stopped. The steps that take real time and have no progress bar
+of their own:
+
+| last line you see | what is happening | how long is normal |
+|---|---|---|
+| `onnxruntime providers: [...]` | finding the upload | seconds |
+| `reading /kaggle/input/...` | parsing 100k JSON lines | ~10 s |
+| `constructing TextEmbedding` | downloading ~130 MB of weights, then building a CUDA session | up to a few minutes cold |
+| `warm-up: N texts/s` | the real run | ~1 minute |
+
+If it sits on `constructing TextEmbedding` for more than five minutes, the
+weight download is stuck. **Restart & Clear Cell Outputs** and run again --
+the partial download is discarded and retried.
+
+If it sits before `reading`, the recursive search of `/kaggle/input` is slow
+because another dataset is attached. The notebook now tries shallow paths
+first, so re-running with the current version fixes it.
+
 ## If the session dies partway
 
 Both notebooks resume. Re-run the same cell and they skip what is already

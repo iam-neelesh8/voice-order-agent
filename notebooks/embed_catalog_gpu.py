@@ -27,6 +27,13 @@ import json
 import os
 import time
 
+_T0 = time.time()
+
+
+def log(message):
+    """Timestamped and flushed. Every step, so a hang has an address."""
+    print(f"[{time.time() - _T0:6.1f}s] {message}", flush=True)
+
 # fastembed-gpu keeps the exact ONNX weights the local CPU path uses, so the
 # vectors are interchangeable. Installing plain `fastembed` here would still
 # work but would run on CPU and defeat the point.
@@ -43,7 +50,7 @@ from fastembed import TextEmbedding
 # --- fail loudly if this is not actually on a GPU ----------------------------
 
 providers = onnxruntime.get_available_providers()
-print("onnxruntime providers:", providers, flush=True)
+log(f"onnxruntime providers: {providers}")
 if "CUDAExecutionProvider" not in providers:
     raise SystemExit(
         "No CUDAExecutionProvider. This would run on CPU and take about three "
@@ -54,11 +61,22 @@ if "CUDAExecutionProvider" not in providers:
 
 # --- locate the export -------------------------------------------------------
 
-candidates = (
-    glob.glob("/kaggle/input/**/embed_input.jsonl.gz", recursive=True)
-    + glob.glob("./embed_input.jsonl.gz")
-    + glob.glob("/content/embed_input.jsonl.gz")
-)
+log("looking for the upload ...")
+
+# Shallow patterns first. A recursive walk of /kaggle/input is slow when
+# another dataset is attached -- the ASR bundle alone is ~10,000 files -- and
+# the upload is always one or two levels down anyway.
+candidates: list[str] = []
+for pattern in (
+    "/kaggle/input/*/embed_input.jsonl.gz",
+    "/kaggle/input/*/*/embed_input.jsonl.gz",
+    "./embed_input.jsonl.gz",
+    "/content/embed_input.jsonl.gz",
+):
+    candidates += glob.glob(pattern)
+if not candidates:
+    log("  not in the usual places, falling back to a recursive search ...")
+    candidates = glob.glob("/kaggle/input/**/embed_input.jsonl.gz", recursive=True)
 if not candidates:
     try:                                     # Colab: prompt for the upload
         from google.colab import files
@@ -74,7 +92,7 @@ if not candidates:
     )
 
 source = candidates[0]
-print("reading", source, flush=True)
+log(f"reading {source}")
 
 # --- read ids and texts ------------------------------------------------------
 
@@ -89,20 +107,43 @@ with gzip.open(source, "rt", encoding="utf-8") as fh:
         texts.append(row["text"])
 
 model_name = (meta or {}).get("model", "BAAI/bge-small-en-v1.5")
-print(f"{len(texts):,} texts  |  model {model_name}", flush=True)
+log(f"{len(texts):,} texts read  |  model {model_name}")
 
 # --- embed -------------------------------------------------------------------
 
+log("constructing TextEmbedding -- downloads ~130 MB on a cold cache, then")
+log("  builds a CUDA session. This is the step with no progress bar.")
 model = TextEmbedding(model_name=model_name, providers=["CUDAExecutionProvider"])
+log("model constructed")
+
+# What the session actually chose, not what was merely available. An
+# onnxruntime-gpu that cannot bind to the CUDA runtime falls back silently.
+try:
+    active = model.model.model.get_providers()
+    log(f"session providers: {active}")
+    if "CUDAExecutionProvider" not in active:
+        raise SystemExit(
+            "The session fell back to CPU despite CUDA being available. "
+            "Restart & Clear Cell Outputs and run again."
+        )
+except AttributeError:
+    log("(could not read session providers on this fastembed version)")
+
+# Eight texts, not 256. If something is wrong this returns in a second rather
+# than looking like another hang.
+log("tiny smoke test: 8 texts ...")
+list(model.embed(["spark plug"] * 8, batch_size=8))
+log("smoke test ok")
 
 # Time a small batch before committing to the whole catalog. A GPU does
 # hundreds of texts a second; CPU does about ten. Better to find out now than
 # forty minutes in with nothing on screen.
+log("warm-up: 256 texts ...")
 warm = texts[:256]
 t0 = time.time()
 list(model.embed(warm, batch_size=256))
 rate = len(warm) / max(time.time() - t0, 1e-6)
-print(f"warm-up: {rate:,.0f} texts/s", flush=True)
+log(f"warm-up: {rate:,.0f} texts/s")
 if rate < 100:
     raise SystemExit(
         f"Only {rate:,.0f} texts/s -- that is CPU speed, and the full run would "
@@ -124,13 +165,12 @@ for start in range(0, len(texts), STEP):
     )
     done = min(start + STEP, len(texts))
     speed = done / (time.time() - t0)
-    print(f"  {done:,}/{len(texts):,}  ({speed:,.0f}/s, "
-          f"~{(len(texts)-done)/speed:,.0f}s left)", flush=True)
+    log(f"  {done:,}/{len(texts):,}  ({speed:,.0f}/s, "
+        f"~{(len(texts)-done)/speed:,.0f}s left)")
 
 vectors = np.vstack(chunks)
 elapsed = time.time() - t0
-print(f"embedded in {elapsed:.1f}s  ({len(texts)/elapsed:,.0f} texts/s)  shape {vectors.shape}",
-      flush=True)
+log(f"embedded in {elapsed:.1f}s ({len(texts)/elapsed:,.0f} texts/s) shape {vectors.shape}")
 
 # L2-normalise so cosine similarity is a plain dot product, matching what the
 # local pipeline stores.
