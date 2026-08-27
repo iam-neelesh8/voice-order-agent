@@ -7,6 +7,16 @@ model:
 
 decode:
   beam_size: 5
+  # Biases Whisper toward writing part numbers as digits rather than spelling
+  # them out. Measured +11.2 points of identifier recovery on the dev phone
+  # set -- larger than the spoken-digit normaliser and larger than upgrading
+  # small.en to large-v3. It stops the worst failure: a code written as a
+  # cardinal number ("five hundred thirty two thousand...") that no downstream
+  # rule can recover. Capped at ~224 tokens, so it is a style hint, not a
+  # vocabulary. See docs/LEARNINGS.md.
+  initial_prompt: >-
+    Ordering auto parts by part number. Examples: 41-993, P0420, AV1200,
+    3397118933, F4ZZ-2B293-A, H9004S, 8542043983.
   # n-best is the whole point — one transcript is not enough for part numbers.
   n_best: 5
   temperature: 0.0

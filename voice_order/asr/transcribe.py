@@ -44,6 +44,8 @@ class Transcriber:
         # so the two are run separately rather than paying 5x up front.
         self.n_best = int(n_best or cfg.get("decode.n_best", 5))
         self.vad_filter = bool(cfg.get("decode.vad_filter", True))
+        # Biasing prompt -- see configs/asr.yaml and docs/LEARNINGS.md.
+        self.initial_prompt = cfg.get("decode.initial_prompt", None) or None
         self._model = None
 
     def _loaded(self):
@@ -64,6 +66,7 @@ class Transcriber:
             temperature=temperature,
             vad_filter=self.vad_filter,
             language="en",
+            initial_prompt=self.initial_prompt,
             condition_on_previous_text=False,
         )
         parts, logprobs = [], []

@@ -82,13 +82,55 @@ acoustic model fixes orthography.
 
 Whisper is ~20% of a voice turn. It is not the latency problem (the LLM is).
 
-### Still untested, and it should be the next thing
+### Experiment: initial_prompt biasing  (free, CPU, ~8 min)
 
-`initial_prompt` / `hotwords` bias Whisper's decoding. Feeding it "the caller
-is reading car part numbers like 41-993, P0420" *before* it transcribes might
-make it write digits as digits. This is the one lever we have not pulled, it
-needs no GPU, and it is the cheapest plausible ASR win left. **Hypothesis, not
-yet a result.**
+Whisper generates text token by token, each conditioned on what came before.
+`initial_prompt` is fed in as fake *previous context*, so the model's built-in
+language model is primed. Prime it with hyphenated digit codes and it keeps
+writing that pattern instead of spelling numbers out.
+
+Prompt used:
+
+    "Ordering auto parts by part number. Examples: 41-993, P0420, AV1200,
+     3397118933, F4ZZ-2B293-A, H9004S, 8542043983."
+
+Same 80 phone clips, small.en, identical decoding, prompt vs no prompt:
+
+    no prompt         36.2%
+    + initial_prompt  47.5%   (+11.2)
+
+**Bigger than predicted, and the reason is instructive.** I expected a small
+gain, because the spoken-digit normaliser already turns "forty one ninety
+three" into 41993. But the prompt fixes a *different, worse* failure that the
+normaliser cannot touch: Whisper writing a code as a spelled-out cardinal
+number.
+
+    want 532135
+      no prompt:  "five hundred thirty two thousand one hundred thirty five"
+      prompted:   "532135"
+
+"Five hundred thirty two thousand..." is arithmetic prose, not a digit string
+-- nothing downstream recovers it. The prompt stops Whisper doing this at the
+source by teaching it "these are codes, not quantities". It also keeps letters
+attached (H9004S, W21411, I31115G4) instead of splitting them off.
+
+**Lessons:**
+- A prompt can bias *style* (how the model writes) for free, without touching
+  the acoustics. Cheapest ASR win in the project so far.
+- It has a hard ceiling: ~224 tokens, so it cannot carry a 160k-part-number
+  vocabulary. It is a style hint, not a lookup. Getting a *wrong* digit
+  (failure mode 2) is untouched by it -- that still needs vocabulary-constrained
+  ASR (paid) or fuzzy matching (our own code).
+- I predicted "modest" and was wrong by running it. The spelled-out-cardinal
+  failure was invisible until the transcripts were read.
+
+Now on by default -- `configs/asr.yaml: decode.initial_prompt`.
+
+### Still worth trying
+
+`hotwords` (a newer faster-whisper feature) boosts specific words with the
+same short-context limit. And large-v3-turbo -- large-v3 accuracy at a speed
+that runs locally -- is the next thing to measure.
 
 ---
 
@@ -233,7 +275,7 @@ comes out wrong, you can point at the step that did it.
 
 | stage | best cheap choice so far | open? | state |
 |---|---|---|---|
-| voice -> text | faster-whisper small.en + digit recovery | yes | works; prompt-biasing untested |
+| voice -> text | small.en + initial_prompt + digit recovery | yes | prompt-biasing measured +11.2 |
 | text -> product | BM25 + part-number index (no embeddings) | yes | 0.226 -> 0.352 on identifiers |
 | text -> voice | Piper | yes | works |
 | the agent | qwen2.5:7b local, API-swappable | yes | 7/7, but 24s/turn on CPU |
@@ -244,8 +286,9 @@ zero extra model cost.
 
 ## Open experiments, in priority order
 
-1. **Whisper `initial_prompt` biasing** — no GPU, cheapest untested ASR win.
-2. **General fuzzy matching** — ~8 points of identifier headroom remain after
+1. ~~Whisper `initial_prompt` biasing~~ — **done, +11.2 points, now default.**
+2. **large-v3-turbo** — large-v3 accuracy at a speed that runs on the laptop.
+3. **General fuzzy matching** — ~8 points of identifier headroom remain after
    the digit recovery. Needs a deletion index; an afternoon.
 3. **API LLM for latency** — 24s -> ~4s per turn. Fixes the demo, not the
    numbers.
