@@ -124,7 +124,6 @@ meta = next((r for r in raw if r.get("_meta")), {})
 AUDIO_FINGERPRINT = meta.get("audio_fingerprint")
 print("audio fingerprint:", AUDIO_FINGERPRINT, flush=True)
 manifest = [r for r in raw if not r.get("_meta")]
-print("audio fingerprint:", AUDIO_FINGERPRINT, flush=True)
 if CONDITIONS:
     manifest = [r for r in manifest if r["condition"] in CONDITIONS]
 
@@ -217,12 +216,33 @@ for model_name in MODELS:
     del model
 
 os.system("zip -qr transcripts.zip transcripts")
-print(f"\nwrote transcripts.zip ({os.path.getsize('transcripts.zip')/1e6:.1f} MB)")
-print("download it, unzip, then:  voice-order import-transcripts transcripts")
+size_mb = os.path.getsize("transcripts.zip") / 1e6
+print(f"\nwrote transcripts.zip ({size_mb:.2f} MB)", flush=True)
+for name in sorted(os.listdir("transcripts")):
+    clips = sum(1 for _ in open(f"transcripts/{name}", encoding="utf-8"))
+    print(f"   {name}  {clips:,} clips", flush=True)
 
+# How to actually get the file. On Kaggle this renders a clickable link and the
+# file also appears in the Output panel. The Colab helper throws a JavaScript
+# error on Kaggle, so it goes last and its failure is swallowed -- a finished
+# run used to end with that error on screen, which reads like a failure.
 try:
+    from IPython.display import FileLink, display
+
+    print("\nclick to download:", flush=True)
+    display(FileLink("transcripts.zip"))
+except Exception:
+    pass
+
+print(
+    "\nOr: right-hand panel -> Output -> /kaggle/working -> transcripts.zip"
+    "\nThen locally:  voice-order import-transcripts <unzipped folder>",
+    flush=True,
+)
+
+try:                                    # Colab only; errors on Kaggle
     from google.colab import files
 
     files.download("transcripts.zip")
-except ImportError:
-    print("(Kaggle: find it under Output on the right-hand panel)")
+except Exception:
+    pass
