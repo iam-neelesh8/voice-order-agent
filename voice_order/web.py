@@ -43,6 +43,11 @@ PAGE = """<!doctype html>
            align-items:baseline; gap:14px; flex-wrap:wrap }
   h1 { font-size:17px; margin:0; font-weight:650 }
   .sub { color:var(--dim); font-size:13px }
+  .modelpick { margin-left:auto; color:var(--dim); font-size:12px;
+               display:flex; align-items:center; gap:6px }
+  .modelpick select { background:var(--panel); color:var(--text);
+    border:1px solid var(--line); border-radius:7px; padding:5px 8px; font:inherit;
+    font-size:12px; cursor:pointer }
   main { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,420px);
          gap:0; height:calc(100vh - 62px) }
   @media (max-width:900px){ main{grid-template-columns:1fr; height:auto} }
@@ -90,6 +95,9 @@ PAGE = """<!doctype html>
 <header>
   <h1>voice-order-agent</h1>
   <span class="sub">the model asks &middot; the code decides &middot; type an order below</span>
+  <label class="modelpick">model
+    <select id="model"><option>...</option></select>
+  </label>
 </header>
 
 <main>
@@ -184,7 +192,35 @@ document.getElementById('reset').onclick=async()=>{
   bubble('agent', d.greeting);
 };
 
-(async()=>{ const d=await post('/api/reset'); bubble('agent', d.greeting); })();
+const modelSel=document.getElementById('model');
+
+function fillModels(info){
+  modelSel.innerHTML='';
+  for(const p of info.profiles){
+    const o=document.createElement('option');
+    o.value=p.name; o.textContent=p.name+' ('+p.model+')';
+    if(p.name===info.current) o.selected=true;
+    modelSel.appendChild(o);
+  }
+}
+
+modelSel.onchange=async()=>{
+  send.disabled=true;
+  bubble('sys','switching to '+modelSel.value+'...');
+  const d=await post('/api/model',{profile:modelSel.value});
+  if(d.error){ bubble('sys','error: '+d.error); }
+  else {
+    chat.innerHTML=''; renderTools([]); renderCart({lines:[],total:0});
+    fillModels(d); bubble('agent', d.greeting);
+  }
+  send.disabled=false; input.focus();
+};
+
+(async()=>{
+  const info=await post('/api/model',{});   // populate the dropdown
+  fillModels(info);
+  const d=await post('/api/reset'); bubble('agent', d.greeting);
+})();
 </script>
 """
 
@@ -194,13 +230,32 @@ class _State:
 
     lock = threading.Lock()
     agent = None
+    profile: str | None = None   # None = the config default
 
     @classmethod
-    def reset(cls):
+    def reset(cls, profile: str | None = None):
         from voice_order.agent.loop import OrderAgent
+        from voice_order.llm.client import from_config
 
-        cls.agent = OrderAgent(persist=True)
+        if profile is not None:
+            cls.profile = profile
+        client = from_config(profile=cls.profile) if cls.profile else None
+        cls.agent = OrderAgent(client=client, persist=True)
         return cls.agent
+
+    @classmethod
+    def model_info(cls) -> dict:
+        from voice_order import config
+        from voice_order.llm.client import active_profile
+
+        profiles = config.load("agent").get("llm.profiles", {})
+        return {
+            "current": cls.profile or active_profile(),
+            "profiles": [
+                {"name": name, "model": spec.get("model")}
+                for name, spec in profiles.items()
+            ],
+        }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -229,6 +284,20 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except json.JSONDecodeError:
             self._send({"error": "bad json"}, 400)
+            return
+
+        if self.path == "/api/model":
+            profile = payload.get("profile")
+            with _State.lock:
+                if profile:
+                    try:
+                        agent = _State.reset(profile)
+                    except Exception as exc:  # e.g. missing API key
+                        self._send({"error": f"{type(exc).__name__}: {exc}"}, 400)
+                        return
+                    self._send({**_State.model_info(), "greeting": agent.greeting()})
+                else:
+                    self._send(_State.model_info())
             return
 
         if self.path == "/api/reset":
@@ -266,11 +335,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
-    from voice_order import config
+    from voice_order.llm.client import active_profile, from_config
 
-    cfg = config.load("agent")
+    client = from_config()
     print(f"voice-order demo on http://{host}:{port}")
-    print(f"  model     {cfg.get('llm.model')} via {cfg.get('llm.base_url')}")
+    print(f"  model     {client.model}  ({active_profile()}) via {client.base_url}")
     print("  localhost only, one call at a time -- this is a demo, not a server")
     print("  Ctrl-C to stop")
     try:
