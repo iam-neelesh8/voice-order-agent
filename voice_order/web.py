@@ -294,7 +294,7 @@ function endCall(){
 
 mic.onclick=()=>{ call ? endCall() : startCall(); };
 
-const modelSel=document.getElementById('model');const modelSel=document.getElementById('model');
+const modelSel=document.getElementById('model');
 
 function fillModels(info){
   modelSel.innerHTML='';
