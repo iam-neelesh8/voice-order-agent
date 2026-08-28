@@ -198,44 +198,103 @@ document.getElementById('reset').onclick=async()=>{
 };
 
 const mic=document.getElementById('mic');
-let mediaRec=null, chunks=[];
 
-async function playB64Wav(b64){
-  if(!b64) return;
-  try{ await new Audio('data:audio/wav;base64,'+b64).play(); }catch(e){}
+// ---- continuous, hands-free call --------------------------------------
+// Press the mic once to START a call. It listens; when you speak it records,
+// and ~1.2s of silence ends your turn and sends it. While the agent speaks,
+// listening pauses so it does not hear its own voice. Press again to END.
+
+let call=null;
+const THRESH=0.020, SILENCE_MS=1200, TICK=90, MIN_SPEECH_MS=350;
+
+function playAndWait(b64){
+  return new Promise(res=>{
+    if(!b64) return res();
+    const a=new Audio('data:audio/wav;base64,'+b64);
+    a.onended=res; a.onerror=res; a.play().catch(res);
+  });
 }
 
-mic.onclick=async()=>{
-  if(mediaRec && mediaRec.state==='recording'){ mediaRec.stop(); return; }
+function rms(){
+  call.analyser.getByteTimeDomainData(call.buf);
+  let s=0; for(const v of call.buf){ const x=(v-128)/128; s+=x*x; }
+  return Math.sqrt(s/call.buf.length);
+}
+
+function beginTurn(){
+  call.chunks=[]; call.startedAt=Date.now();
+  call.rec=new MediaRecorder(call.stream);
+  call.rec.ondataavailable=e=>{ if(e.data.size) call.chunks.push(e.data); };
+  call.rec.onstop=endTurn;
+  call.rec.start();
+}
+
+async function endTurn(){
+  const spoke=Date.now()-call.startedAt;
+  const blob=new Blob(call.chunks,{type:'audio/webm'});
+  if(spoke < MIN_SPEECH_MS){ call.silence=0; return; }   // a blip, not speech
+  call.paused=true;                                       // stop listening
+  const think=document.createElement('div');
+  think.className='msg sys'; think.textContent='...'; chat.appendChild(think);
+  chat.scrollTop=chat.scrollHeight;
+  try{
+    const r=await fetch('/api/voice',{method:'POST',body:blob});
+    const d=await r.json(); think.remove();
+    if(d.error){ bubble('sys','error: '+d.error); }
+    else if(!d.transcript){ /* heard nothing usable -- stay quiet, keep listening */ }
+    else {
+      bubble('you', d.transcript); bubble('agent', d.reply);
+      renderTools(d.tools); renderCart(d.cart);
+      await playAndWait(d.audio);
+    }
+  }catch(err){ think.remove(); bubble('sys','error: '+err); }
+  call.silence=0; call.paused=false;                     // resume listening
+}
+
+function tick(){
+  if(!call || !call.active) return;
+  if(!call.paused){
+    const level=rms();
+    if(level>THRESH){
+      call.silence=0;
+      if(!call.speaking){ call.speaking=true; beginTurn(); }
+    } else if(call.speaking){
+      call.silence+=TICK;
+      if(call.silence>=SILENCE_MS){ call.speaking=false; call.rec.stop(); }
+    }
+  }
+  call.timer=setTimeout(tick, TICK);
+}
+
+async function startCall(){
   let stream;
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
   catch(e){ bubble('sys','microphone blocked -- allow mic access and retry'); return; }
-  chunks=[]; mediaRec=new MediaRecorder(stream);
-  mediaRec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
-  mediaRec.onstop=async()=>{
-    stream.getTracks().forEach(t=>t.stop());
-    mic.classList.remove('rec'); mic.innerHTML='&#127908;';
-    const blob=new Blob(chunks,{type:'audio/webm'});
-    send.disabled=true;
-    const think=document.createElement('div');
-    think.className='msg sys'; think.textContent='listening...';
-    chat.appendChild(think); chat.scrollTop=chat.scrollHeight;
-    try{
-      const r=await fetch('/api/voice',{method:'POST',body:blob});
-      const d=await r.json(); think.remove();
-      if(d.error){ bubble('sys','error: '+d.error); }
-      else {
-        if(d.transcript) bubble('you', d.transcript);
-        bubble('agent', d.reply); renderTools(d.tools); renderCart(d.cart);
-        playB64Wav(d.audio);
-      }
-    }catch(err){ think.remove(); bubble('sys','error: '+err); }
-    send.disabled=false;
-  };
-  mediaRec.start(); mic.classList.add('rec'); mic.textContent='⏹';
-};
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const src=ctx.createMediaStreamSource(stream);
+  const analyser=ctx.createAnalyser(); analyser.fftSize=512; src.connect(analyser);
+  call={stream, ctx, analyser, buf:new Uint8Array(analyser.fftSize),
+        active:true, speaking:false, paused:false, silence:0, chunks:[], rec:null};
+  mic.classList.add('rec'); mic.textContent='⏹';
+  mic.title='end call';
+  bubble('sys','call started -- just speak, pause when done. Press the mic to end.');
+  tick();
+}
 
-const modelSel=document.getElementById('model');
+function endCall(){
+  if(!call) return;
+  call.active=false; clearTimeout(call.timer);
+  try{ call.rec && call.rec.state==='recording' && call.rec.stop(); }catch(e){}
+  call.stream.getTracks().forEach(t=>t.stop());
+  call.ctx.close();
+  call=null;
+  mic.classList.remove('rec'); mic.innerHTML='&#127908;'; mic.title='start a voice call';
+  bubble('sys','call ended');
+}
+
+mic.onclick=()=>{ call ? endCall() : startCall(); };
+
+const modelSel=document.getElementById('model');const modelSel=document.getElementById('model');
 
 function fillModels(info){
   modelSel.innerHTML='';

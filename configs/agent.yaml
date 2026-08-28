@@ -25,6 +25,13 @@ llm:
       model: gemini-2.5-flash
       api_key_env: GEMINI_API
 
+    groq:                                     # hosted open models, very fast
+      base_url: https://api.groq.com/openai/v1
+      # Groq's exact Qwen model id changes -- verify with `voice-order model`
+      # once GROQ_API_KEY is set (it lists what the key can reach, like Gemini).
+      model: qwen/qwen3-32b
+      api_key_env: GROQ_API_KEY
+
   # Zero on purpose. A phone order is not a place for creative variance, and
   # it makes a failing conversation reproducible.
   temperature: 0.0
