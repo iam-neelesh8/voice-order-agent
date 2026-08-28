@@ -142,7 +142,7 @@ def test_an_unknown_tool_is_reported_not_raised(session):
 
 def test_a_clear_winner_is_reported_as_a_strong_match(session):
     """24.0 against 3.0 is not a close call."""
-    assert "Add it" in session.search("AC Delco 41-993")["guidance"]
+    assert "add it" in session.search("AC Delco 41-993")["guidance"].lower()
 
 
 def test_two_equally_good_matches_ask_rather_than_guess():

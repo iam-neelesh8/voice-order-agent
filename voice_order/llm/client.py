@@ -62,6 +62,15 @@ class LLMClient(Protocol):
 # ---------------------------------------------------------------------------
 
 
+def _retry_after(detail: str) -> float:
+    """Seconds to wait after a 429. Groq puts the wait in the message; default
+    to a short back-off if it is not there."""
+    import re
+
+    m = re.search(r"try again in ([\d.]+)s", detail)
+    return min(float(m.group(1)) + 0.3, 10.0) if m else 2.0
+
+
 class OpenAICompatClient:
     """Talks to anything speaking the OpenAI chat-completions shape."""
 
@@ -108,18 +117,28 @@ class OpenAICompatClient:
             method="POST",
         )
 
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                body = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:400]
-            raise RuntimeError(f"LLM returned HTTP {exc.code}: {detail}") from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(
-                f"cannot reach the model at {self.base_url} ({exc.reason}). "
-                "Is Ollama running? `ollama serve`, then `ollama pull "
-                f"{self.model}`."
-            ) from exc
+        import time
+
+        # Free tiers rate-limit hard (Groq: 8000 tokens/min). A 429 is a
+        # "wait and retry", not a failure -- the server even says how long.
+        body = None
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    body = json.loads(response.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                if exc.code == 429 and attempt < 3:
+                    time.sleep(_retry_after(detail))
+                    continue
+                raise RuntimeError(f"LLM returned HTTP {exc.code}: {detail[:400]}") from exc
+            except urllib.error.URLError as exc:
+                raise RuntimeError(
+                    f"cannot reach the model at {self.base_url} ({exc.reason}). "
+                    "Is Ollama running? `ollama serve`, then `ollama pull "
+                    f"{self.model}`."
+                ) from exc
 
         return self._parse(body)
 

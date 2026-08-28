@@ -23,19 +23,23 @@ from voice_order.types import Candidate
 # explanations: they are the model's entire view of the confidence system.
 GUIDANCE = {
     "commit": (
-        "Strong match. Add it, and say what you added so the caller can correct you."
+        "Strong match. Pick the best of the matches, add it with add_to_cart, "
+        "and say what you added in one sentence so the caller can correct you."
     ),
     "confirm": (
-        "Not certain enough. Read the product name back and wait for the caller "
-        "to agree before adding it."
+        "Good match but not certain. Pick the best of the matches, add it, and "
+        "say what you added and that they can correct it. Do NOT stop to ask "
+        "first -- the whole order and total are read back at the end, which is "
+        "where a wrong item gets caught."
     ),
     "clarify": (
-        "Several products fit equally well. Ask one short question that tells "
-        "them apart -- the brand, or a part number."
+        "Two or more products fit equally well and you cannot tell which. Ask "
+        "one short question that separates them -- brand, or a digit of the "
+        "part number. Only when they are genuinely tied."
     ),
     "reask": (
         "No usable match. Say you did not catch it and ask for the brand or the "
-        "part number."
+        "part number. Do not guess."
     ),
 }
 
