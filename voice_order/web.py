@@ -442,8 +442,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):  # noqa: N802
-        if self.path not in ("/", "/index.html"):
-            self.send_error(404)
+        # The browser auto-requests /favicon.ico; answer it quietly so it does
+        # not show up as a scary 404.
+        if self.path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
             return
         body = PAGE.encode("utf-8")
         self.send_response(200)
