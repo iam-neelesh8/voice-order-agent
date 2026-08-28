@@ -34,7 +34,10 @@ class OrderAgent:
     def _default_retriever():
         from voice_order.retrieval.fusion import Retriever
 
-        return Retriever.load(retrievers="lexical")
+        # lexical + part-number: BM25 for names, the exact/fuzzy identifier
+        # index for part numbers. Measured the largest win in the project.
+        # Dense is deliberately excluded -- it hurt (see docs/LEARNINGS.md).
+        return Retriever.load(retrievers="lexical,part_number")
 
     def greeting(self) -> str:
         self.session.state = State.LISTENING
