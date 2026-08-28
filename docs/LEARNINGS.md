@@ -211,6 +211,30 @@ Share of identifiers recoverable from the ASR output:
 
 Microseconds of Python, worth more than 4.4 GPU-hours.
 
+### Fuzzy matching — where a recovery proxy lied
+
+For the wrong-digit case (Whisper heard `VAG1809`, the real code is
+`VAGG1809`), a deletion index finds real catalog codes one edit away. A quick
+proxy — "is the gold code within edit distance 1 of anything we produced" —
+said **+11 points**. That proxy was misleading.
+
+End-to-end, measured on 200 phone clips:
+
+    identifier queries, top-1     41% -> 42%   (+1)
+    identifier queries, top-5     51% -> 53%   (+2)
+
+**Lesson: recoverable is not the same as findable.** Fuzzy floods the
+candidate list with plausible neighbours (`41994` -> `1994`, `41984`, ...), so
+the right product gets *into* the top-5 but rarely ranks first among the noise.
+The proxy counted "is it reachable"; ranking it first when the set is full of
+near-misses is a different, harder thing.
+
+But the top-5 gain is exactly the setup the LLM reranker needs: fuzzy puts the
+right product in the shortlist, and a reranker that reads all five products'
+details picks it out. Fuzzy alone is +2; fuzzy feeding a reranker is where it
+converts. Kept, scored strictly below any exact match, off by default via a
+flag for the ablation.
+
 ### n-best fusion — the counter-intuitive one
 
 Whisper can return its top 5 guesses, not just 1. Retrieving over all of them:

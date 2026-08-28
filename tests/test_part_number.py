@@ -165,3 +165,50 @@ def test_weighting_can_be_disabled_for_the_ablation():
     from voice_order.retrieval.fusion import _hypothesis_weights
 
     assert _hypothesis_weights([-0.2, -1.5, -3.0], enabled=False) == [1.0, 1.0, 1.0]
+
+
+# ---------------------------------------------------------------- fuzzy --
+
+
+@pytest.fixture
+def fuzzy_index():
+    return PartNumberIndex(
+        {"VAGG1809": ["B-real"], "3397118933": ["B-wiper"], "1000": ["B-common"]},
+        deletions={
+            **{d: ["VAGG1809"] for d in __import__(
+                "voice_order.retrieval.part_number", fromlist=["_deletions"]
+            )._deletions("VAGG1809")},
+            **{d: ["3397118933"] for d in __import__(
+                "voice_order.retrieval.part_number", fromlist=["_deletions"]
+            )._deletions("3397118933")},
+        },
+    )
+
+
+def test_a_wrong_digit_finds_the_real_neighbour(fuzzy_index):
+    """Whisper heard VAG1809; the real code is VAGG1809, one edit away."""
+    hits = fuzzy_index.search("I need a VAG1809")
+    assert "B-real" in [c.parent_asin for c in hits]
+
+
+def test_an_exact_hit_is_never_displaced_by_a_fuzzy_one(fuzzy_index):
+    """Exact is the answer; fuzzy is a guess. Exact must rank first."""
+    hits = fuzzy_index.search("the 3397118933 wiper and a VAG1809")
+    assert hits[0].parent_asin == "B-wiper"          # exact beats the fuzzy VAG hit
+    assert hits[0].component_scores.get("part_number")  # tagged as exact, not fuzzy
+
+
+def test_fuzzy_scores_stay_below_exact(fuzzy_index):
+    fuzzy = fuzzy_index.search("VAG1809")[0].score
+    exact = fuzzy_index.search("3397118933")[0].score
+    assert fuzzy < exact
+
+
+def test_short_codes_get_no_fuzzy_neighbours(fuzzy_index):
+    """"1000" is one edit from dozens of real codes -- all noise."""
+    assert fuzzy_index._fuzzy_neighbours("1001") == set()
+
+
+def test_fuzzy_can_be_switched_off(fuzzy_index):
+    """The ablation needs exact-only."""
+    assert fuzzy_index.search("VAG1809", fuzzy=False) == []
