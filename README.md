@@ -14,6 +14,22 @@ key only where it clearly wins. Every technology choice is **measured, not
 assumed**, and the reasoning is kept as a learning journal:
 **[docs/LEARNINGS.md](docs/LEARNINGS.md)**.
 
+## Demo
+
+<!--
+  To make the video play INLINE on GitHub (recommended):
+  open this README on github.com, click the edit (pencil) icon, drag Demo.mp4
+  into the editor, and GitHub replaces this block with an embedded player
+  hosted on its CDN. That keeps the 92 MB file out of the repo entirely.
+
+  Paste the GitHub-generated video URL here once you have it:
+-->
+
+https://github.com/iam-neelesh8/voice-order-agent/assets/PLACEHOLDER/Demo.mp4
+
+A caller speaks an order; the agent finds the part, builds the cart, reads back
+the total, and places it — end to end, by voice.
+
 ## Try it
 
 ```bash

@@ -266,3 +266,6 @@ data/transcripts/
 # ...except data/transcripts_gpu/, which is committed on purpose: it is the
 # evidence behind the stage 4 result and costs an hour of GPU to regenerate.
 # See data/transcripts_gpu/README.md.
+
+# Private notes -- not for the repo
+LINKEDIN_POST.md
