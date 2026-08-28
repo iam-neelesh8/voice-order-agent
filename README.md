@@ -25,7 +25,15 @@ assumed**, and the reasoning is kept as a learning journal:
   Paste the GitHub-generated video URL here once you have it:
 -->
 
-https://github.com/iam-neelesh8/voice-order-agent/assets/PLACEHOLDER/Demo.mp4
+
+
+
+https://github.com/user-attachments/assets/45ce48ae-479c-4498-945a-47ab01bca06e
+
+
+
+
+
 
 A caller speaks an order; the agent finds the part, builds the cart, reads back
 the total, and places it — end to end, by voice.
