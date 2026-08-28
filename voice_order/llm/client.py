@@ -175,24 +175,44 @@ class FakeClient:
 # ---------------------------------------------------------------------------
 
 
-def from_config() -> LLMClient:
-    """Build the client described by configs/agent.yaml."""
+def active_profile() -> str:
+    """Which LLM profile is selected. VOICE_ORDER_LLM overrides the config."""
     from voice_order import config
 
     cfg = config.load("agent")
-    base_url = str(cfg.get("llm.base_url", "http://localhost:11434/v1"))
-    model = str(cfg.get("llm.model", "qwen2.5:7b-instruct"))
+    return os.environ.get("VOICE_ORDER_LLM") or str(cfg.get("llm.active", "ollama"))
 
-    key_env = cfg.get("llm.api_key_env", None)
+
+def from_config(profile: str | None = None) -> LLMClient:
+    """Build the client for the active (or named) LLM profile.
+
+    Profiles live under `llm.profiles` in configs/agent.yaml, so switching
+    between a local model and a hosted API is a name, not a code change -- the
+    tools, cart rules and thresholds are all outside the model.
+    """
+    from voice_order import config
+
+    cfg = config.load("agent")
+    name = profile or active_profile()
+    profiles = cfg.get("llm.profiles", {})
+    if name not in profiles:
+        raise RuntimeError(
+            f"unknown LLM profile {name!r}. Known: {sorted(profiles)}. "
+            "Set one with `voice-order model <name>`."
+        )
+    spec = profiles[name]
+
+    key_env = spec.get("api_key_env")
     api_key = os.environ.get(str(key_env)) if key_env else None
     if key_env and not api_key:
         raise RuntimeError(
-            f"configs/agent.yaml expects the API key in ${key_env}, which is unset"
+            f"profile {name!r} needs the API key in ${key_env}, which is not set. "
+            f"Put it in a .env file or export it."
         )
 
     return OpenAICompatClient(
-        base_url=base_url,
-        model=model,
+        base_url=str(spec["base_url"]),
+        model=str(spec["model"]),
         api_key=api_key,
         temperature=float(cfg.get("llm.temperature", 0.0)),
         timeout=float(cfg.get("llm.timeout_s", 120)),

@@ -90,6 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
                      help="skip the model-match check (not recommended)")
 
     # stages 6-7
+    mdl = sub.add_parser("model", help="stage 6 - show or switch the LLM (ollama/gemini)")
+    mdl.add_argument("name", nargs="?", help="profile to switch to; omit to show current")
+
     web = sub.add_parser("serve", help="stage 6 - a local demo page you can watch")
     web.add_argument("--port", type=int, default=8000)
     web.add_argument("--host", default="127.0.0.1")
@@ -313,6 +316,37 @@ def _cmd_import_embeddings(args) -> int:
     return 0
 
 
+def _cmd_model(args) -> int:
+    import re
+
+    from voice_order import config
+    from voice_order.llm.client import active_profile
+
+    cfg = config.load("agent")
+    profiles = cfg.get("llm.profiles", {})
+
+    if not args.name:
+        current = active_profile()
+        print(f"active LLM: {current}")
+        for name, spec in profiles.items():
+            mark = " <-" if name == current else "   "
+            print(f"  {name:<10}{spec.get('model'):<24}{mark}")
+        return 0
+
+    if args.name not in profiles:
+        print(f"unknown profile {args.name!r}. Known: {', '.join(profiles)}")
+        return 1
+
+    # Rewrite just the `active:` line, leaving the rest of the file untouched.
+    path = config.CONFIG_DIR / "agent.yaml"
+    text = path.read_text(encoding="utf-8")
+    text = re.sub(r"(?m)^(\s*active:\s*).*$", rf"\g<1>{args.name}", text, count=1)
+    path.write_text(text, encoding="utf-8")
+    config.load.cache_clear()
+    print(f"switched to {args.name} ({profiles[args.name].get('model')})")
+    return 0
+
+
 def _cmd_serve(args) -> int:
     from voice_order.web import serve
 
@@ -385,6 +419,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_call(args)
     if args.command == "check-model":
         return _cmd_check_model(args)
+    if args.command == "model":
+        return _cmd_model(args)
     if args.command == "serve":
         return _cmd_serve(args)
 

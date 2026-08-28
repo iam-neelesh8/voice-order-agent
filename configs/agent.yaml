@@ -9,31 +9,22 @@
 # the cart rules and the thresholds all live outside the model, so swapping it
 # cannot widen what the agent is allowed to do.
 #
-# ------------------------------------------------------------------------
-# TO USE GEMINI 2.0 FLASH INSTEAD (fast, cheap, fixes the 24s local latency):
-#
-#   1. get a key at https://aistudio.google.com/apikey
-#   2. set it in your shell:   export GEMINI_API_KEY=...    (Windows: setx)
-#   3. replace the three llm.* values below with these:
-#
-#        base_url: https://generativelanguage.googleapis.com/v1beta/openai
-#        model: gemini-2.0-flash
-#        api_key_env: GEMINI_API_KEY
-#
-# Gemini exposes an OpenAI-compatible endpoint, so no code changes -- the same
-# client, tools and prompt. Groq (base_url https://api.groq.com/openai/v1) and
-# OpenAI (https://api.openai.com/v1, model gpt-4o-mini) work the same way.
-# ------------------------------------------------------------------------
 llm:
-  base_url: http://localhost:11434/v1
-  # Measured with `voice-order check-model`: 7b passes 7/7 behavioural checks,
-  # 3b passes 3/7 -- it never calls search_products at all and invents ids
-  # instead. The gap is judgement, not tool-calling syntax: both emit valid
-  # calls. Cost is speed: ~24s per turn on a 16 GB CPU-only laptop against
-  # ~15s for 3b. Neither is fast enough for live voice; that needs a GPU or a
-  # hosted endpoint, which is a change to base_url and nothing else.
-  model: qwen2.5:7b-instruct
-  api_key_env: null
+  # The toggle. `voice-order model gemini` / `voice-order model ollama` flips
+  # this; VOICE_ORDER_LLM=gemini overrides it for one run without editing.
+  active: ollama
+
+  profiles:
+    ollama:                                   # local, free, ~24s/turn on CPU
+      base_url: http://localhost:11434/v1
+      model: qwen2.5:7b-instruct
+      api_key_env: null
+
+    gemini:                                   # hosted, cheap, ~2s/turn
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai
+      model: gemini-2.5-flash
+      api_key_env: GEMINI_API
+
   # Zero on purpose. A phone order is not a place for creative variance, and
   # it makes a failing conversation reproducible.
   temperature: 0.0

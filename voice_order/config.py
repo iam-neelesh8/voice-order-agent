@@ -15,6 +15,29 @@ from typing import Any
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_dotenv() -> None:
+    """Read .env files into the environment, without a dependency.
+
+    Looks in the project root and in voice_order/, and never overwrites a
+    variable already set in the real environment -- an explicit `export` wins
+    over a file. KEY=VALUE per line, # comments and blank lines ignored.
+    """
+    for path in (ROOT / ".env", ROOT / "voice_order" / ".env"):
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip().strip("'\"")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+_load_dotenv()
 CONFIG_DIR = ROOT / "configs"
 DATA_DIR = ROOT / "data"
 INDEX_DIR = DATA_DIR / "index"
