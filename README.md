@@ -1,131 +1,84 @@
 # voice-order-agent
 
-**Goal: the best cheap phone-to-purchase application.** A caller speaks, an
-order is placed. Three stages, each built the cheapest good way — open source
-first, an API key only where it clearly wins:
-
-    voice -> text      (ASR: faster-whisper)
-    text  -> product   (retrieval + a local-LLM agent)
-    text  -> voice     (TTS: Piper)
-
-Every technology choice is measured, not assumed, and the reasoning is kept as
-a learning journal: **[docs/LEARNINGS.md](docs/LEARNINGS.md)** — how BM25,
-embeddings, local LLMs and Whisper actually behave on this problem, with the
-number behind every claim.
+A phone-to-purchase agent for a parts shop. A caller speaks, the agent finds
+the product, takes the order, and reads back the total — by voice.
 
 ```
-caller ──► ASR ──► agent loop ──► retrieval ──► SQLite
-  ▲    (faster-whisper)  │      (BM25 + dense)     │
-  └────── TTS ◄──────────┘                      orders,
-        (Piper)                            carts, transcripts
+you speak ──► ASR ──► search ──► agent (LLM) ──► TTS ──► you hear
+           (Whisper)  (BM25 +     picks, cart,   (Piper)
+                    part numbers)  confirms
 ```
 
-Everything runs locally on open-source models and stdlib SQLite. No speech
-APIs, no LLM API keys, no database server, no GPU required.
+Three stages, each built the cheapest good way — open source first, an API
+key only where it clearly wins. Every technology choice is **measured, not
+assumed**, and the reasoning is kept as a learning journal:
+**[docs/LEARNINGS.md](docs/LEARNINGS.md)**.
 
-## Why this problem and not a generic chatbot
+## Try it
 
-The interesting failure is not dialogue. It is **identifiers**.
+```bash
+pip install -e ".[retrieval,speech]"
+python -m voice_order serve
+```
+
+Open **http://localhost:8000**, press the mic, and speak an order — or type
+one. Pick the model from the dropdown (local Ollama, or a fast API). The right
+panel shows every layer: what the model asked for, what the catalog returned,
+and the cart building.
+
+First run needs a one-time data build (a few minutes):
+
+```bash
+python -m voice_order db init       # create the database
+python -m voice_order catalog       # ~100k products from Amazon Reviews 2023
+python -m voice_order seed           # prices, inventory, customers
+python -m voice_order index all      # build the search indexes
+```
+
+## The hard part is identifiers, not dialogue
 
 > "I need an AC Delco 41-993"
 
-Speech recognition mangles alphanumerics — `forty one dash nine ninety three`,
-`41-99 3`, `4199 3`. A companion study
-([fitment-rag](https://github.com/iam-neelesh8/fitment-rag)) measured typed
-retrieval on this same corpus and found lexical matching wins *because*
-product identifiers are exact tokens. Speech destroys exactly those tokens.
+Speech recognition mangles part numbers — `forty one dash nine ninety three`,
+`41-99 3`, `4199 3`. Typed, the agent finds the right product **58%** of the
+time; after speech, **~30%**. That gap is almost entirely part numbers: word
+error rate is **84%** on queries with an identifier against **15%** without.
 
-So the agent never trusts a single transcript: retrieval runs over n-best ASR
-hypotheses, part numbers are digit-normalised and phonetically matched, and
-anything ambiguous gets a confirmation turn before it reaches the cart.
+So the agent never trusts one transcript. Part numbers are digit-normalised,
+matched exactly then fuzzily, and Whisper is biased toward writing digits as
+digits. A six-times-larger model recovered 8% of the loss; a free biasing
+prompt recovered more. The measurements are the point — see the journal.
 
-## Status
+## The design: the model proposes, the code disposes
 
-Stage 0 of 8 — scaffold. Nothing is implemented yet; every module raises
-`NotImplementedError` naming the stage it belongs to.
+The LLM holds the conversation but can only *ask* for six functions; code
+validates and runs them. It cannot invent a product, a price, or a total. A
+model that hallucinates a part number is refused in code, not asked nicely in
+a prompt. That means swapping the model — local for API, one for another —
+can never widen what the agent is allowed to do, and a wrong order is always
+traceable to the step that caused it.
 
 | doc | what it covers |
 |---|---|
-| [docs/KAGGLE.md](docs/KAGGLE.md) | step-by-step for the two GPU jobs |
-| [docs/voice-order-agent.drawio](docs/voice-order-agent.drawio) | **start here** — 4-page draw.io diagram: build order, system, one turn, data pipeline |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | the same thing in text + mermaid, for reading on GitHub |
-| [data/README.md](data/README.md) | the four datasets, what is committed and what is not |
-| [DATA_LICENSES.md](DATA_LICENSES.md) | attribution and terms |
+| [docs/LEARNINGS.md](docs/LEARNINGS.md) | how BM25, embeddings, local LLMs and Whisper actually behave here, with the number behind every claim |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | the system, one turn end to end, and the build order |
+| [data/README.md](data/README.md) | the catalog, the test set, and the results |
 
-## Getting started
+## Switching the model
 
-```bash
-pip install -e ".[retrieval,speech,dev]"
-voice-order db init           # stage 1 — creates data/voice_order.db
-voice-order catalog           # stage 1 — ~100k items into SQLite
-voice-order index all         # stage 2 — build BM25 + dense indexes on disk
-voice-order eval typed        # stage 2 — the first number
-```
-
-No config needed to start: the database is one file at `data/voice_order.db`
-and the indexes are files under `data/index/`. Delete both and rerun to reset.
-`voice-order --help` lists one command per stage.
-
-## Running the heavy steps on a GPU
-
-Two steps want a GPU. Both are the same round trip: export a file, run a
-notebook, import the result with checks.
-
-| step | this laptop, measured | a T4 |
-|---|---|---|
-| embed 100k catalog titles | ~3 hours | ~1 minute |
-| transcribe 5 conditions, 1-best | ~6.75 hours | under an hour |
-| transcribe 5 conditions, n-best | ~34 hours | ~2 hours |
+Local Ollama by default. To use a hosted model, put the key in a `.env` file
+and switch:
 
 ```bash
-# embeddings
-voice-order export-embed-input          # -> data/exports/embed_input.jsonl.gz (6 MB)
-# run notebooks/embed_catalog_gpu.py, download + unzip
-voice-order import-embeddings catalog_embeddings
-
-# transcripts
-voice-order export-asr-input            # -> data/exports/asr_dev.zip
-# run notebooks/transcribe_gpu.py, download + unzip
-voice-order import-transcripts transcripts
+python -m voice_order model gemini     # or in the demo's dropdown, live
 ```
 
-Both imports are **verified, not trusted** -- see below.
-Step-by-step Kaggle walkthrough: [docs/KAGGLE.md](docs/KAGGLE.md).
+Any OpenAI-compatible endpoint works — Ollama, Gemini, Groq, OpenAI — because
+the tools and rules live outside the model. See `configs/agent.yaml`.
 
-Embedding the 100k catalog is ~3 hours on a laptop CPU and about a minute on
-a T4. It is a two-command round trip, not a science project:
+## Data
 
-```bash
-voice-order export-embed-input          # -> data/exports/embed_input.jsonl.gz (6 MB)
-# run notebooks/embed_catalog_gpu.py on Kaggle or Colab with a GPU runtime,
-# upload that file, download catalog_embeddings.zip, unzip
-voice-order import-embeddings catalog_embeddings
-```
-
-`import-embeddings` refuses the file unless the ids match the catalog exactly
-row for row, and a sample re-embedded locally matches what came back -- document
-and query vectors must come from the same model or every cosine score is
-miscalibrated.
-
-`import-transcripts` refuses any file whose query_ids are not in the manifest,
-because evaluating those would score one query's retrieval against another
-query's speech.
-
-Every one of those failures is silent: nothing crashes, the answers are just
-wrong. That is why they are checked rather than assumed.
-
-## Storage and retrieval, and why they are separate
-
-The database is **storage only** — products, calls, carts, orders. Retrieval
-runs in-process against index files rebuilt from it. Two reasons:
-
-- **The numbers must not depend on the backend.** SQLite FTS5 `bm25()` and
-  Postgres `ts_rank` are different ranking functions. For a project whose
-  whole output is recall@k, a score that changes with the database is
-  disqualifying. The BM25 index is ours, so it is identical everywhere.
-- **Stage 5 has to ablate three components independently.** In-process that
-  is a constructor flag; in SQL it is a schema migration per variant.
-
-That leaves nothing that needs a server at this scale. `db/repository.py` is
-the only module touching SQL, so a Postgres backend is one more implementation
-of that interface if you want one — it is not needed to run this.
+Catalog is item metadata from Amazon Reviews 2023 (McAuley Lab, UC San Diego),
+research use, streamed at build time. Prices, inventory and customers are
+generated and marked as such. Nothing here is company data. See
+[DATA_LICENSES.md](DATA_LICENSES.md).

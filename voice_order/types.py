@@ -8,7 +8,6 @@ without waiting for it.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
 
@@ -69,40 +68,3 @@ class Candidate:
     component_scores: dict[str, float] = field(default_factory=dict)
     product: Product | None = None
     matched_hypothesis: str | None = None
-
-
-@dataclass(frozen=True)
-class OrderIntent:
-    """What the agent thinks the caller asked for, before it is resolved."""
-
-    raw_text: str
-    quantity: int = 1
-    brand: str | None = None
-    part_number: str | None = None
-    product_words: str = ""
-
-
-@dataclass
-class CartLine:
-    intent: OrderIntent
-    candidate: Candidate | None
-    quantity: int
-    confirmed: bool = False
-
-
-@dataclass
-class Cart:
-    call_id: str
-    lines: list[CartLine] = field(default_factory=list)
-    opened_at: datetime | None = None
-
-
-@dataclass(frozen=True)
-class Turn:
-    """One caller-utterance / agent-reply exchange, fully traced."""
-
-    transcript: Transcript
-    intent: OrderIntent | None
-    candidates: list[Candidate]
-    action: str  # "commit" | "confirm" | "reask" | "close"
-    reply_text: str

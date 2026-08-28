@@ -133,23 +133,6 @@ flowchart TD
 | 7 | Speech out | Piper reply synthesis, barge-in, timing instrumentation | p50/p95 latency per turn, broken down by ASR / retrieval / TTS |
 | 8 | Reality check | ~100 human recordings, some over a real phone line | synthetic-vs-human delta on the stage-5 metrics |
 
-### Deferred: one GPU trip
-
-Two steps in this project want a GPU, and neither blocks anything before
-stage 4. They are batched into a single session rather than done twice:
-
-| step | on this laptop | on a T4 |
-|---|---|---|
-| Embed 100k catalog titles (stage 2, dense) | ~3 hours, measured | ~1 minute |
-| Whisper sweep, 3 model sizes x 5 conditions (stage 4) | impractical | ~2 hours |
-
-Everything else is CPU work. The ASR step is written as a portable batch job
-(manifest of wav paths in, JSONL of n-best out) so the GPU box needs neither
-the database nor the indexes. `DenseIndex.build` is checkpointed and
-resumable for the same reason: it can be run anywhere, in pieces.
-
-Until then the retrieval core runs lexical-only, which is a defensible
-baseline -- fitment-rag found lexical wins on this corpus.
 
 ### Rules that hold across every stage
 

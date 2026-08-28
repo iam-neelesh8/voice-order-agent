@@ -56,7 +56,7 @@ The sound was fine. The spelling is wrong. This is why it is worth
 understanding: it means the fix is not a better microphone or a bigger model —
 it is text processing after the fact.
 
-### Experiment: does a bigger model fix it?  (4.4 GPU-hours, Kaggle T4)
+### Experiment: does a bigger model fix it?  (measured)
 
 | model | params | identifier WER | recall@1 |
 |---|---|---|---|
@@ -78,7 +78,7 @@ acoustic model fixes orthography.
 | | per clip | 100k-clip job |
 |---|---|---|
 | small.en, CPU (14 cores) | ~2.5 s | ~80 min/condition |
-| small.en, Kaggle T4 | ~0.3 s | ~5 min |
+| small.en | ~0.3 s | ~5 min |
 
 Whisper is ~20% of a voice turn. It is not the latency problem (the LLM is).
 
@@ -164,7 +164,7 @@ that things with *similar meaning* sit close together. "the ceramic ones" lands
 near ceramic brake pads even with no shared words. Search is one big matmul over
 100k vectors — ~150 MB, tens of milliseconds, no fancy vector database needed.
 
-**Experiment: does adding it help?  (needed a GPU to build — 100k embeddings)**
+**Experiment: does adding it help?  (measured)**
 
 | retriever | recall@1 |
 |---|---|

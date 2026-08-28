@@ -177,30 +177,6 @@ def build_spoken_set(
     return stats
 
 
-def audio_fingerprint(split: str, rows: list[dict] | None = None) -> str:
-    """Hash of the clip bytes themselves, in manifest order.
-
-    Exists because `import-transcripts` could not catch the one mistake most
-    likely to happen: uploading a stale audio bundle. The query_ids match --
-    the queries never changed, only the audio did -- so the id check passes
-    and transcripts of the wrong recordings install silently.
-
-    Hashing the bytes rather than paths or sizes: a regenerated clip has the
-    same name and a very similar size, so anything cheaper would miss exactly
-    the case this is for.
-    """
-    import hashlib
-
-    rows = rows if rows is not None else load_manifest(split)
-    digest = hashlib.sha256()
-    for row in rows:
-        clip = config.data_dir() / row["path"]
-        digest.update(row["query_id"].encode("utf-8"))
-        digest.update(b"|")
-        if clip.is_file():
-            digest.update(clip.read_bytes())
-    return digest.hexdigest()[:16]
-
 
 def _manifest_row(query, condition: str, path: Path, voice: str) -> dict:
     return {

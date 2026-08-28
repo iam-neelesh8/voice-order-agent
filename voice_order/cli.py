@@ -67,28 +67,6 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--nbest", action="store_true")
     ev.add_argument("--part-number", action="store_true")
 
-    # run the heavy embedding step elsewhere
-    exp = sub.add_parser("export-embed-input",
-                         help="write the catalog texts for a GPU box to embed")
-    exp.add_argument("--out", help="destination .jsonl.gz")
-
-    expa = sub.add_parser("export-asr-input",
-                          help="bundle audio + manifest for a GPU box to transcribe")
-    expa.add_argument("--split", choices=["dev", "test"], default="dev")
-    expa.add_argument("--condition", action="append",
-                      help="limit to one condition (repeatable); default is all")
-
-    impt = sub.add_parser("import-transcripts",
-                          help="install transcripts produced elsewhere, with checks")
-    impt.add_argument("source", help="folder of *.jsonl, or a single file")
-    impt.add_argument("--split", choices=["dev", "test"], default="dev")
-
-    imp = sub.add_parser("import-embeddings",
-                         help="install embeddings built elsewhere, with checks")
-    imp.add_argument("source", help="folder holding embeddings.npy and ids.json")
-    imp.add_argument("--skip-verify", action="store_true",
-                     help="skip the model-match check (not recommended)")
-
     # stages 6-7
     mdl = sub.add_parser("model", help="stage 6 - show or switch the LLM (ollama/gemini)")
     mdl.add_argument("name", nargs="?", help="profile to switch to; omit to show current")
@@ -249,73 +227,6 @@ def _cmd_gen_audio(args) -> int:
     return 0
 
 
-def _cmd_export_asr_input(args) -> int:
-    from voice_order.asr import portable
-
-    path, stats = portable.export_asr_input(args.split, args.condition)
-    print(f"{stats['clips']:,} clips -> {path}  ({stats['mb']} MB)")
-    print(f"conditions: {', '.join(stats['conditions'])}")
-    print(f"audio fingerprint: {stats['fingerprint']}")
-    if stats["missing"]:
-        print(f"  ! {stats['missing']:,} manifest rows had no audio file")
-    print()
-    print("next:")
-    print("  1. open notebooks/transcribe_gpu.py on Kaggle or Colab (GPU runtime)")
-    print("  2. upload this zip, run the cell, download transcripts.zip")
-    print("  3. unzip it, then:  voice-order import-transcripts transcripts")
-    return 0
-
-
-def _cmd_import_transcripts(args) -> int:
-    from voice_order.asr import portable
-
-    installed = portable.import_transcripts(args.source, args.split)
-    print(f"{'condition':<16}{'model':<14}{'clips':>8}{'coverage':>10}")
-    print("-" * 48)
-    for row in installed:
-        print(f"{row['condition']:<16}{row['model']:<14}{row['clips']:>8,}"
-              f"{row['coverage']:>9.1%}")
-        if row["empty"]:
-            print(f"  ! {row['empty']:,} clips produced no transcript at all")
-    print()
-    print("now:  voice-order eval spoken --condition <condition>")
-    return 0
-
-
-def _cmd_export_embed_input(args) -> int:
-    from voice_order.retrieval import portable
-
-    path, count, fingerprint = portable.export_embed_input(args.out)
-    size_mb = path.stat().st_size / 1e6
-    print(f"{count:,} texts -> {path}  ({size_mb:.1f} MB)")
-    print(f"catalog fingerprint  {fingerprint}")
-    print()
-    print("next:")
-    print("  1. open notebooks/embed_catalog_gpu.py on Kaggle or Colab (GPU runtime)")
-    print("  2. upload this file, run the cell, download catalog_embeddings.zip")
-    print("  3. unzip it, then:  voice-order import-embeddings catalog_embeddings")
-    return 0
-
-
-def _cmd_import_embeddings(args) -> int:
-    from voice_order.retrieval import portable
-
-    report = portable.import_embeddings(args.source, skip_verify=args.skip_verify)
-    print(f"vectors        {report['vectors']:,} x {report['dim']}")
-    print(f"catalog rows   {report['catalog_rows']:,}  (ids match)")
-    print(f"fingerprint    {report['fingerprint']}")
-    if "verify_min_cosine" in report:
-        print(f"model check    min cosine {report['verify_min_cosine']:.5f}"
-              f"  mean {report['verify_mean_cosine']:.5f}")
-    else:
-        print("model check    SKIPPED")
-    print(f"installed to   {report['installed']}")
-    print()
-    print("dense retrieval is now available:")
-    print("  voice-order eval typed --query-set orders --retrievers lexical,dense")
-    return 0
-
-
 def _cmd_model(args) -> int:
     import re
 
@@ -405,14 +316,6 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_transcribe(args)
     if args.command == "gen-audio":
         return _cmd_gen_audio(args)
-    if args.command == "export-asr-input":
-        return _cmd_export_asr_input(args)
-    if args.command == "import-transcripts":
-        return _cmd_import_transcripts(args)
-    if args.command == "export-embed-input":
-        return _cmd_export_embed_input(args)
-    if args.command == "import-embeddings":
-        return _cmd_import_embeddings(args)
     if args.command == "query":
         return _cmd_query(args)
     if args.command == "call":
