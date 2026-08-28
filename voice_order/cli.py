@@ -329,8 +329,8 @@ def _cmd_model(args) -> int:
         current = active_profile()
         print(f"active LLM: {current}")
         for name, spec in profiles.items():
-            mark = " <-" if name == current else "   "
-            print(f"  {name:<10}{spec.get('model'):<24}{mark}")
+            mark = " <-- active" if name == current else ""
+            print(f"  {name:<18}{spec.get('model'):<22}{mark}")
         return 0
 
     if args.name not in profiles:

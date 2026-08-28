@@ -25,11 +25,26 @@ llm:
       model: gemini-2.5-flash
       api_key_env: GEMINI_API
 
-    groq:                                     # hosted open models, very fast
+    # Groq: hosted open models, ~0.5s/turn -- the fastest of the lot, and
+    # open weights. All four verified for tool-calling on this account.
+    groq-qwen:                                # Qwen3.8 27B, the newest Qwen
       base_url: https://api.groq.com/openai/v1
-      # Groq's exact Qwen model id changes -- verify with `voice-order model`
-      # once GROQ_API_KEY is set (it lists what the key can reach, like Gemini).
-      model: qwen/qwen3-32b
+      model: qwen/qwen3.8-27b
+      api_key_env: GROQ_API_KEY
+
+    groq-qwen-3.6:                            # Qwen3.6 27B
+      base_url: https://api.groq.com/openai/v1
+      model: qwen/qwen3.6-27b
+      api_key_env: GROQ_API_KEY
+
+    groq-gptoss-120b:                         # OpenAI gpt-oss 120B (open)
+      base_url: https://api.groq.com/openai/v1
+      model: openai/gpt-oss-120b
+      api_key_env: GROQ_API_KEY
+
+    groq-gptoss-20b:                          # OpenAI gpt-oss 20B (open)
+      base_url: https://api.groq.com/openai/v1
+      model: openai/gpt-oss-20b
       api_key_env: GROQ_API_KEY
 
   # Zero on purpose. A phone order is not a place for creative variance, and

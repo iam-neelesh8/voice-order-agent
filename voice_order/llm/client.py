@@ -91,7 +91,13 @@ class OpenAICompatClient:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
 
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            # A real User-Agent. Groq sits behind Cloudflare, which blocks the
+            # default "Python-urllib/..." with a 403 (error 1010). Harmless
+            # everywhere else.
+            "User-Agent": "voice-order-agent/1.0",
+        }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
