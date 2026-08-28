@@ -65,6 +65,10 @@ PAGE = """<!doctype html>
   button { padding:11px 18px; border-radius:9px; border:0; background:var(--accent);
            color:#fff; font:inherit; font-weight:600; cursor:pointer }
   button.ghost { background:transparent; color:var(--dim); border:1px solid var(--line) }
+  #mic { background:var(--panel); border:1px solid var(--line); font-size:18px; padding:9px 13px }
+  #mic.rec { background:var(--bad); color:#fff; border-color:var(--bad);
+             animation:pulse 1.1s ease-in-out infinite }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
   button:disabled { opacity:.5; cursor:default }
   h2 { font-size:11px; text-transform:uppercase; letter-spacing:.09em;
        color:var(--dim); margin:22px 0 9px }
@@ -104,7 +108,8 @@ PAGE = """<!doctype html>
   <div style="display:flex;flex-direction:column;min-height:0">
     <div id="chat"></div>
     <form id="f">
-      <input id="t" autocomplete="off" placeholder="I need two AC Delco 41-993 spark plugs" autofocus>
+      <button type="button" id="mic" title="hold a conversation by voice">&#127908;</button>
+      <input id="t" autocomplete="off" placeholder="type, or press the mic to speak" autofocus>
       <button id="send">Send</button>
       <button type="button" class="ghost" id="reset">New call</button>
     </form>
@@ -192,6 +197,44 @@ document.getElementById('reset').onclick=async()=>{
   bubble('agent', d.greeting);
 };
 
+const mic=document.getElementById('mic');
+let mediaRec=null, chunks=[];
+
+async function playB64Wav(b64){
+  if(!b64) return;
+  try{ await new Audio('data:audio/wav;base64,'+b64).play(); }catch(e){}
+}
+
+mic.onclick=async()=>{
+  if(mediaRec && mediaRec.state==='recording'){ mediaRec.stop(); return; }
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){ bubble('sys','microphone blocked -- allow mic access and retry'); return; }
+  chunks=[]; mediaRec=new MediaRecorder(stream);
+  mediaRec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+  mediaRec.onstop=async()=>{
+    stream.getTracks().forEach(t=>t.stop());
+    mic.classList.remove('rec'); mic.innerHTML='&#127908;';
+    const blob=new Blob(chunks,{type:'audio/webm'});
+    send.disabled=true;
+    const think=document.createElement('div');
+    think.className='msg sys'; think.textContent='listening...';
+    chat.appendChild(think); chat.scrollTop=chat.scrollHeight;
+    try{
+      const r=await fetch('/api/voice',{method:'POST',body:blob});
+      const d=await r.json(); think.remove();
+      if(d.error){ bubble('sys','error: '+d.error); }
+      else {
+        if(d.transcript) bubble('you', d.transcript);
+        bubble('agent', d.reply); renderTools(d.tools); renderCart(d.cart);
+        playB64Wav(d.audio);
+      }
+    }catch(err){ think.remove(); bubble('sys','error: '+err); }
+    send.disabled=false;
+  };
+  mediaRec.start(); mic.classList.add('rec'); mic.textContent='⏹';
+};
+
 const modelSel=document.getElementById('model');
 
 function fillModels(info){
@@ -257,6 +300,78 @@ class _State:
             ],
         }
 
+    # Heavy models, loaded once on the first voice turn. Whisper reads the mic
+    # audio (with the part-number biasing prompt from config); Piper speaks the
+    # reply. Both are cached because loading them per turn would dominate.
+    _transcriber = None
+    _speaker = None
+
+    @classmethod
+    def transcriber(cls):
+        if cls._transcriber is None:
+            from voice_order.asr.transcribe import Transcriber
+
+            cls._transcriber = Transcriber(n_best=1)  # 1-best is enough live
+            cls._transcriber._loaded()
+        return cls._transcriber
+
+    @classmethod
+    def speaker(cls):
+        if cls._speaker is None:
+            from voice_order.tts.speak import Speaker
+
+            cls._speaker = Speaker()
+            cls._speaker._loaded()
+        return cls._speaker
+
+
+def _voice_turn(audio_bytes: bytes) -> dict:
+    """Mic audio in -> transcript -> agent -> spoken reply out.
+
+    The whole loop the project is about, live. Whisper here is the same
+    Transcriber the eval uses, biasing prompt and all, so a part number spoken
+    into the mic gets the same treatment the measured pipeline gives it.
+    """
+    import base64
+    import io
+    import tempfile
+    from pathlib import Path
+
+    import soundfile as sf
+
+    agent = _State.agent or _State.reset()
+
+    # faster-whisper decodes via PyAV, which reads the browser's webm/opus
+    # directly -- no ffmpeg, no conversion.
+    tmp = Path(tempfile.gettempdir()) / f"voice_{threading.get_ident()}.webm"
+    tmp.write_bytes(audio_bytes)
+    try:
+        transcript = _State.transcriber().transcribe_file(tmp).best
+    except Exception as exc:
+        return {"error": f"could not read the audio: {exc}"}
+    finally:
+        tmp.unlink(missing_ok=True)
+
+    if not transcript.strip():
+        return {"transcript": "", "reply": "Sorry, I didn't catch that -- try again?",
+                "audio": None, "tools": [], "cart": agent.session._snapshot()}
+
+    reply = agent.handle(transcript)
+
+    audio, rate = _State.speaker().synthesize(reply)
+    buf = io.BytesIO()
+    sf.write(buf, audio, rate, format="WAV")
+    spoken = base64.b64encode(buf.getvalue()).decode("ascii")
+
+    last = agent.brain.tool_log[-1] if agent.brain.tool_log else {}
+    return {
+        "transcript": transcript,
+        "reply": reply,
+        "audio": spoken,
+        "tools": last.get("tools", []),
+        "cart": agent.session._snapshot(),
+    }
+
 
 class Handler(BaseHTTPRequestHandler):
     def _send(self, payload: dict, status: int = 200) -> None:
@@ -280,8 +395,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802
         length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length)
+
+        # Voice audio is raw bytes, not JSON. Handle it before parsing.
+        if self.path == "/api/voice":
+            with _State.lock:
+                try:
+                    result = _voice_turn(raw)
+                except Exception as exc:
+                    self._send({"error": f"{type(exc).__name__}: {exc}"}, 500)
+                    return
+            self._send(result)
+            return
+
         try:
-            payload = json.loads(self.rfile.read(length) or b"{}")
+            payload = json.loads(raw or b"{}")
         except json.JSONDecodeError:
             self._send({"error": "bad json"}, 400)
             return
