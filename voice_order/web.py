@@ -531,11 +531,20 @@ def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
     from voice_order.llm.client import active_profile, from_config
 
     client = from_config()
+    try:
+        server = ThreadingHTTPServer((host, port), Handler)
+    except OSError as exc:
+        print(f"\n  ! could not start on port {port}: {exc}")
+        print("  ! an old server is probably still running there. Stop it")
+        print("    (Ctrl-C in its window) or use a different port:")
+        print(f"       python -m voice_order serve --port {port + 1}")
+        return
+
     print(f"voice-order demo on http://{host}:{port}")
     print(f"  model     {client.model}  ({active_profile()}) via {client.base_url}")
     print("  localhost only, one call at a time -- this is a demo, not a server")
     print("  Ctrl-C to stop")
     try:
-        ThreadingHTTPServer((host, port), Handler).serve_forever()
+        server.serve_forever()
     except KeyboardInterrupt:
         print("\nstopped")
